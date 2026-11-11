@@ -14,7 +14,7 @@ permissions:
 
 # One deploy at a time; let an in-progress deploy finish.
 concurrency:
-  group: pages
+  group: pages-deploy-2
   cancel-in-progress: false
 
 jobs:
