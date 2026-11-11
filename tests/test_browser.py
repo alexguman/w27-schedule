@@ -44,3 +44,34 @@ def test_add_contemplate_and_open_every_popup(page):
     )
     assert opened > 400
     assert errors == []
+
+
+def test_requirements_panel_separates_sources(page):
+    pg, errors = page
+    pg.evaluate("localStorage.clear()")
+    pg.reload()
+    # Winter: Financial Accounting on the schedule, Marketing Strategy contemplated.
+    pg.fill("#search", "30000")
+    pg.locator('.res[data-code="BUSN30000"]').click()
+    pg.fill("#search", "37000")
+    pg.locator('#results [data-info="BUSN37000"]').click()
+    pg.locator("[data-dlg=add][data-to=contemplated]").click()
+    pg.keyboard.press("Escape")
+    # Other quarters: 35100, completed in Autumn. Its title comes from the Winter data.
+    pg.click("#tab-requirements")
+    pg.fill("#oq-num", "35100")
+    assert pg.input_value("#oq-title") != ""
+    pg.fill("#oq-quarter", "Autumn 2026")
+    pg.click("#oq-add")
+
+    total = pg.locator("#req-total + .rprog")
+    by_source = [total.get_attribute(f"data-{s}") for s in ("other", "scheduled", "contemplated")]
+    assert by_source == ["100", "100", "100"]
+    assert pg.locator('[data-row="fa"] .rc.src-scheduled').count() == 1
+    assert pg.locator('[data-row="finance"] .rc.src-other').count() == 1
+    assert pg.locator('[data-row="marketing"] .rc.src-contemplated').count() == 1
+    # Saved under its own key; the schedule key keeps its old format.
+    saved = pg.evaluate("JSON.parse(localStorage.getItem('w27-requirements')).other.map(o => o.num)")
+    assert saved == ["35100"]
+    assert pg.evaluate("JSON.parse(localStorage.getItem('booth-w27-schedule')).length") == 2
+    assert errors == []

@@ -29,6 +29,7 @@
         <button type="button" id="school-laws" data-school="LAWS">Law</button>
       </div>
       <input id="search" type="search" placeholder="Name or code, e.g. 30000 or Evidence" autocomplete="off">
+      <label class="fills"><span>Fills</span><select id="fills" aria-label="Show only courses that fill a requirement"></select></label>
       <ul id="results"></ul>
     </section>
     <section class="panel">
@@ -37,7 +38,12 @@
     </section>
   </aside>
 
-  <main class="calwrap" id="calwrap">
+  <div class="maincol">
+  <div class="tabs" role="tablist" aria-label="View">
+    <button type="button" role="tab" id="tab-calendar" aria-controls="calwrap" aria-selected="true">Calendar</button>
+    <button type="button" role="tab" id="tab-requirements" aria-controls="reqview" aria-selected="false">Requirements</button>
+  </div>
+  <main class="calwrap" id="calwrap" role="tabpanel" aria-labelledby="tab-calendar">
     <div class="focusbar" id="focusbar"></div>
     <div class="cal" id="cal"></div>
     <div class="legend">
@@ -48,11 +54,75 @@
       <label for="showmaybe"><input type="checkbox" id="showmaybe" checked> Show contemplated</label>
     </div>
   </main>
+
+  <!-- Degree requirements. Lists are rendered by app.js; the forms stay put so typing is not interrupted. -->
+  <section class="reqview" id="reqview" role="tabpanel" aria-labelledby="tab-requirements" hidden>
+    <div class="panel req-head">
+      <div class="req-controls">
+        <label>Program <select id="req-program"></select></label>
+        <span id="req-noncredit" class="req-checks"></span>
+      </div>
+      <div class="req-legend" aria-label="Sources">
+        <span><i class="sw src-other"></i>Completed and other quarters</span>
+        <span><i class="sw src-scheduled"></i>Winter, on schedule</span>
+        <span><i class="sw src-contemplated"></i>Winter, contemplated (what-if)</span>
+      </div>
+      <p class="muted req-private">Everything here is saved only in this browser. Use Backup to move it to another browser.</p>
+    </div>
+
+    <section class="panel" id="req-degree" aria-label="Degree requirements"></section>
+
+    <section class="panel">
+      <h2>Concentrations</h2>
+      <div class="req-picker" id="req-picker" role="group" aria-label="Concentrations to track"></div>
+      <div id="req-concs"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Other quarters <span id="oq-count"></span></h2>
+      <div class="req-form" id="oq-form">
+        <label>Course number <input id="oq-num" autocomplete="off" placeholder="35100 or ECON 30100"></label>
+        <label class="grow">Title <input id="oq-title" autocomplete="off" placeholder="Filled in when the number matches a Winter course"></label>
+        <label>Quarter <input id="oq-quarter" autocomplete="off" placeholder="Autumn 2026"></label>
+        <label>Status <select id="oq-status"><option value="completed">Completed</option><option value="enrolled">Enrolled</option><option value="planned">Planned</option></select></label>
+        <label>Units <input id="oq-units" type="number" min="0" max="1000" step="50" value="100"></label>
+        <button type="button" class="btn primary" id="oq-add">Add course</button>
+      </div>
+      <p class="req-msg" id="oq-msg" role="status"></p>
+      <ul class="req-list" id="oq-list"></ul>
+    </section>
+
+    <section class="panel">
+      <h2>Overrides <span id="ov-count"></span></h2>
+      <p class="muted">For petitions and exceptions. An override applies to every course with that number.</p>
+      <div class="req-form" id="ov-form">
+        <label>Course number <input id="ov-num" autocomplete="off" placeholder="38120"></label>
+        <label><span class="sr">Kind</span><select id="ov-kind"><option value="add">also counts toward</option><option value="remove">does not count toward</option></select></label>
+        <label class="grow"><span class="sr">Requirement</span><select id="ov-target"></select></label>
+        <button type="button" class="btn primary" id="ov-add">Add override</button>
+      </div>
+      <p class="req-msg" id="ov-msg" role="status"></p>
+      <ul class="req-list" id="ov-list"></ul>
+    </section>
+
+    <section class="panel">
+      <h2>Backup</h2>
+      <p class="muted">Copy saves your schedule, contemplated courses, other quarters, overrides and tracked concentrations as text. Paste that text here in another browser and press Restore.</p>
+      <div class="dlg-actions">
+        <button type="button" class="btn" id="exp-copy">Copy backup</button>
+        <button type="button" class="btn" id="imp-go">Restore from text below</button>
+      </div>
+      <textarea id="imp-text" rows="5" spellcheck="false" aria-label="Backup text"></textarea>
+      <p class="req-msg" id="imp-msg" role="status"></p>
+    </section>
+  </section>
+  </div>
 </div>
 
 <dialog id="dlg" aria-labelledby="dlg-title"></dialog>
 
 <script src="data.js"></script>
+<script src="requirements.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

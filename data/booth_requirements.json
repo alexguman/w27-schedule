@@ -1,0 +1,1040 @@
+{
+ "schema_version": 1,
+ "sources": {
+  "degree_requirements": {
+   "url": "https://intranet.chicagobooth.edu/pub/academics/cdr/course-related-information/degree-requirements",
+   "title": "MBA Program Outline 2026-27 (New Curriculum effective Autumn 2021)"
+  },
+  "concentrations": {
+   "url": "https://intranet.chicagobooth.edu/pub/academics/cdr/course-related-information/concentration-requirements",
+   "title": "Concentration Requirements (revised October 2026)"
+  },
+  "distinct_credit_rule": {
+   "url": "https://intranet.chicagobooth.edu/pub/evewkd/student-handbook/program",
+   "title": "Evening/Weekend MBA student handbook: MBA Degree"
+  },
+  "retrieved": "2026-11-11"
+ },
+ "course_numbering": "Booth courses are bare five-digit numbers ('35100'). Other departments keep their prefix ('ECON 30100', 'LAWS 43225'). Lists include renumbered equivalents, so '43100' and '32200' both appear.",
+ "default_course_units": 100,
+ "programs": [
+  {
+   "id": "mba",
+   "label": "MBA",
+   "total_units": 2000,
+   "min_booth_units": 1400
+  },
+  {
+   "id": "jdmba",
+   "label": "JD/MBA",
+   "total_units": 1600,
+   "note": "Booth units for the JD/MBA as stated by a JD/MBA student; requirements are otherwise the same as the MBA."
+  }
+ ],
+ "degree": {
+  "non_credit": [
+   {
+    "id": "lead",
+    "label": "LEAD (Leadership Exploration and Development)",
+    "units": 0
+   },
+   {
+    "id": "qwe",
+    "label": "Qualified Work Experience",
+    "units": 0,
+    "note": "Full-Time MBA students matriculating Autumn 2020 or later."
+   }
+  ],
+  "foundations": {
+   "label": "Foundations",
+   "units": 300,
+   "choose": 3,
+   "rows": [
+    {
+     "id": "fa",
+     "label": "Financial Accounting",
+     "basic": [
+      "30000"
+     ],
+     "substitutes": [
+      "30116",
+      "30120",
+      "30122",
+      "30130",
+      "30131"
+     ]
+    },
+    {
+     "id": "micro",
+     "label": "Microeconomics",
+     "basic": [
+      "33001",
+      "33002",
+      "33101"
+     ],
+     "substitutes": [
+      "33230",
+      "ECON 30100",
+      "ECON 30200"
+     ]
+    },
+    {
+     "id": "stats",
+     "label": "Statistics",
+     "basic": [
+      "41000",
+      "41001",
+      "41100"
+     ],
+     "substitutes": [
+      "41202",
+      "41203",
+      "41204",
+      "41206",
+      "41208",
+      "41207",
+      "41215",
+      "41201",
+      "41301",
+      "41305",
+      "41814",
+      "41901",
+      "41902",
+      "41903",
+      "41910",
+      "41916"
+     ]
+    }
+   ]
+  },
+  "flmbe": {
+   "label": "Functions, Leadership and Management, and the Business Environment",
+   "units": 700,
+   "choose": 7,
+   "rows": [
+    {
+     "id": "finance",
+     "group": "Functions",
+     "label": "Finance",
+     "basic": [
+      "35000",
+      "35001",
+      "35200"
+     ],
+     "substitutes": [
+      "34101",
+      "34901",
+      "34902",
+      "34903",
+      "34904",
+      "35100",
+      "35120",
+      "35130",
+      "35150",
+      "35201",
+      "35210",
+      "35214"
+     ]
+    },
+    {
+     "id": "marketing",
+     "group": "Functions",
+     "label": "Marketing",
+     "basic": [
+      "37000"
+     ],
+     "substitutes": [
+      "37101",
+      "37107",
+      "37110",
+      "37113",
+      "37103",
+      "37115",
+      "37105",
+      "37200",
+      "37201",
+      "37202",
+      "37209",
+      "37310",
+      "37301",
+      "37730",
+      "37703"
+     ]
+    },
+    {
+     "id": "operations",
+     "group": "Functions",
+     "label": "Operations",
+     "basic": [
+      "40000"
+     ],
+     "substitutes": [
+      "40101",
+      "40108",
+      "40110"
+     ]
+    },
+    {
+     "id": "strategy",
+     "group": "Functions",
+     "label": "Strategy",
+     "basic": [
+      "42001"
+     ],
+     "substitutes": [
+      "39001",
+      "39101",
+      "42116",
+      "42135",
+      "42715"
+     ]
+    },
+    {
+     "id": "decisions",
+     "group": "Leadership & Management",
+     "label": "Decisions",
+     "basic": [
+      "30005",
+      "30001",
+      "36106",
+      "38002",
+      "38120"
+     ],
+     "substitutes": [
+      "36109"
+     ]
+    },
+    {
+     "id": "people",
+     "group": "Leadership & Management",
+     "label": "People",
+     "basic": [
+      "33032",
+      "38001",
+      "38003",
+      "39002"
+     ],
+     "substitutes": [
+      "31403",
+      "38129",
+      "38122"
+     ]
+    },
+    {
+     "id": "economy",
+     "group": "Business Environment",
+     "label": "Economy",
+     "basic": [
+      "33050",
+      "33040",
+      "33112"
+     ],
+     "substitutes": [
+      "33401",
+      "33403",
+      "33501",
+      "33502",
+      "33503",
+      "33520"
+     ]
+    },
+    {
+     "id": "society",
+     "group": "Business Environment",
+     "label": "Society",
+     "basic": [
+      "33305",
+      "33471",
+      "37212",
+      "38119"
+     ],
+     "substitutes": [
+      "30133",
+      "33251",
+      "34113",
+      "34117",
+      "38115",
+      "38126",
+      "42136",
+      "42201"
+     ],
+     "note": "33251 counts along with enrollment in 33250."
+    }
+   ]
+  },
+  "distinct_credit_rule": "Foundations and FLMBE must be 1,000 units of distinct Chicago Booth credit: one course fills at most one row across both requirements.",
+  "electives": "Units beyond Foundations and FLMBE up to the program total; any course counts.",
+  "notes": [
+   "50-unit courses must be paired with another 50-unit course from the same line to meet a 100-unit requirement.",
+   "50-unit courses approved for half of a requirement are not always paired with another 50-unit course that completes it."
+  ]
+ },
+ "concentrations": [
+  {
+   "id": "accounting",
+   "label": "Accounting",
+   "units": 400,
+   "components": [
+    {
+     "id": "list",
+     "label": "Accounting courses",
+     "units": 400,
+     "courses": [
+      "30000",
+      "30005",
+      "30001",
+      "30116",
+      "30118",
+      "30120",
+      "30121",
+      "30122",
+      "30130",
+      "30131",
+      "30133",
+      "30135",
+      "30830",
+      "30831",
+      "30835",
+      "30840"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "applied_ai",
+   "label": "Applied Artificial Intelligence",
+   "units": 300,
+   "components": [
+    {
+     "id": "list",
+     "label": "Applied AI courses",
+     "units": 300,
+     "courses": [
+      "30135",
+      "32210",
+      "32810",
+      "34200",
+      "35137",
+      "43100",
+      "32200",
+      "43120",
+      "43130",
+      "43800",
+      "43950"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "behavioral_science",
+   "label": "Behavioral Science",
+   "units": 400,
+   "components": [
+    {
+     "id": "list",
+     "label": "Behavioral Science courses",
+     "units": 400,
+     "courses": [
+      "31403",
+      "31702",
+      "38001",
+      "38002",
+      "38003",
+      "38101",
+      "38102",
+      "38103",
+      "38105",
+      "38107",
+      "38115",
+      "38116",
+      "38118",
+      "38119",
+      "38120",
+      "38126",
+      "38129",
+      "38122",
+      "38820",
+      "38821",
+      "38825",
+      "38870",
+      "38886",
+      "39002"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "business_analytics",
+   "label": "Business Analytics",
+   "units": 500,
+   "components": [
+    {
+     "id": "data_science",
+     "label": "Data science",
+     "units": 100,
+     "courses": [
+      "41215",
+      "41201",
+      "41204"
+     ]
+    },
+    {
+     "id": "decision_models",
+     "label": "Decision models and optimization",
+     "units": 100,
+     "courses": [
+      "36106",
+      "36109"
+     ]
+    },
+    {
+     "id": "electives",
+     "label": "Electives",
+     "units": 300,
+     "courses": [
+      "32100",
+      "32120",
+      "32130",
+      "32200",
+      "32810",
+      "35126",
+      "35137",
+      "36109",
+      "37107",
+      "37113",
+      "37103",
+      "37115",
+      "37105",
+      "37202",
+      "37802",
+      "40108",
+      "40206",
+      "40205",
+      "40721",
+      "41201",
+      "41202",
+      "41203",
+      "41204",
+      "41208",
+      "41207",
+      "41215",
+      "41301",
+      "41305",
+      "43100",
+      "41814"
+     ]
+    }
+   ],
+   "notes": [
+    "No more than 200 units of elective credit from each area count toward the concentration (Booth does not define 'area'; not enforced)."
+   ]
+  },
+  {
+   "id": "bss",
+   "label": "Business, Society and Sustainability",
+   "units": 400,
+   "components": [
+    {
+     "id": "list",
+     "label": "BSS courses",
+     "units": 400,
+     "courses": [
+      "30133",
+      "31425",
+      "33251",
+      "33305",
+      "33471",
+      "34113",
+      "34115",
+      "34117",
+      "34735",
+      "35225",
+      "37212",
+      "38115",
+      "38119",
+      "38128",
+      "38129",
+      "38122",
+      "42129",
+      "42136",
+      "42125",
+      "42708",
+      "42710",
+      "42711",
+      "42712",
+      "43130"
+     ]
+    }
+   ],
+   "notes": [
+    "33251 counts with enrollment in 33250."
+   ]
+  },
+  {
+   "id": "econometrics",
+   "label": "Econometrics and Statistics",
+   "units": 300,
+   "components": [
+    {
+     "id": "list",
+     "label": "Econometrics and Statistics courses",
+     "units": 300,
+     "courses": [
+      "41000",
+      "41001",
+      "41100",
+      "41202",
+      "41203",
+      "41204",
+      "41206",
+      "41208",
+      "41207",
+      "41215",
+      "41201",
+      "41301",
+      "41305",
+      "41814",
+      "41901",
+      "41902",
+      "41903",
+      "41910",
+      "41916"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "economics",
+   "label": "Economics",
+   "units": 400,
+   "components": [
+    {
+     "id": "list",
+     "label": "Economics courses",
+     "units": 400,
+     "courses": [
+      "33032",
+      "33050",
+      "33040",
+      "33101",
+      "33112",
+      "33230",
+      "33251",
+      "33301",
+      "33305",
+      "33320",
+      "33350",
+      "33401",
+      "33403",
+      "33454",
+      "33501",
+      "33502",
+      "33503",
+      "33520",
+      "33882",
+      "38120",
+      "42001",
+      "42116",
+      "42135"
+     ]
+    }
+   ],
+   "notes": [
+    "33001 and 33002 do not qualify.",
+    "33251 counts with enrollment in 33250.",
+    "33501, 33502 and 33503 are listed as alternatives ('33501 (or 33502 or 33503)')."
+   ]
+  },
+  {
+   "id": "entrepreneurship",
+   "label": "Entrepreneurship",
+   "units": 300,
+   "components": [
+    {
+     "id": "list",
+     "label": "Entrepreneurship courses",
+     "units": 300,
+     "courses": [
+      "30118",
+      "30121",
+      "31401",
+      "31402",
+      "31403",
+      "34101",
+      "34102",
+      "34103",
+      "34104",
+      "34106",
+      "34108",
+      "34111",
+      "34113",
+      "34115",
+      "34117",
+      "34200",
+      "34205",
+      "34206",
+      "34208",
+      "34210",
+      "34211",
+      "34215",
+      "34219",
+      "34220",
+      "34302",
+      "34305",
+      "34308",
+      "34702",
+      "34704",
+      "34705",
+      "34709",
+      "34715",
+      "34815",
+      "34816",
+      "34820",
+      "34825",
+      "34826",
+      "34882",
+      "34887",
+      "35123",
+      "35213",
+      "35823",
+      "36115",
+      "36110",
+      "37201",
+      "37200",
+      "37310",
+      "37301",
+      "37730",
+      "37703",
+      "39101",
+      "40110",
+      "41206",
+      "41301",
+      "41305",
+      "42705",
+      "42711",
+      "42820",
+      "42830",
+      "43120",
+      "LAWS 43225"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "finance",
+   "label": "Finance",
+   "units": 400,
+   "components": [
+    {
+     "id": "asset_pricing",
+     "label": "Asset pricing",
+     "units": 100,
+     "courses": [
+      "34901",
+      "34902",
+      "35000",
+      "35100",
+      "35101",
+      "35120",
+      "35121",
+      "35125",
+      "35126",
+      "35130",
+      "35150",
+      "35908"
+     ]
+    },
+    {
+     "id": "corporate",
+     "label": "Corporate finance",
+     "units": 100,
+     "courses": [
+      "34101",
+      "34903",
+      "34904",
+      "35200",
+      "35201",
+      "35210",
+      "35213",
+      "35214",
+      "35215"
+     ]
+    },
+    {
+     "id": "additional",
+     "label": "Additional",
+     "units": 200,
+     "courses": [
+      "30130",
+      "30131",
+      "34101",
+      "34901",
+      "34902",
+      "34903",
+      "34904",
+      "35100",
+      "35101",
+      "35118",
+      "35120",
+      "35121",
+      "35123",
+      "35126",
+      "35130",
+      "35136",
+      "35137",
+      "35139",
+      "35141",
+      "35146",
+      "35145",
+      "35150",
+      "35154",
+      "35124",
+      "35155",
+      "35201",
+      "35207",
+      "35210",
+      "35213",
+      "35214",
+      "35215",
+      "35218",
+      "35219",
+      "35222",
+      "35220",
+      "35225",
+      "ECON 28620",
+      "35230",
+      "35817",
+      "35823",
+      "35824",
+      "35830",
+      "35889",
+      "35907",
+      "35908",
+      "35916",
+      "41203"
+     ]
+    }
+   ],
+   "notes": [
+    "33450 and 33451 jointly count as 100 units toward Finance.",
+    "Students taking 35000 and 35200 may count either 34901 or 34902 (but not both) as one of the two additional courses.",
+    "Courses meeting Finance but not Analytic Finance: 30130, 30131, 35000, 35101, 35123."
+   ]
+  },
+  {
+   "id": "analytic_finance",
+   "label": "Analytic Finance",
+   "units": 600,
+   "requires": [
+    "finance"
+   ],
+   "components": [
+    {
+     "id": "list",
+     "label": "Analytic Finance courses",
+     "units": 600,
+     "courses": [
+      "34101",
+      "34901",
+      "34902",
+      "34903",
+      "34904",
+      "34905",
+      "34906",
+      "35100",
+      "35118",
+      "35120",
+      "35121",
+      "35123",
+      "35126",
+      "35130",
+      "35136",
+      "35137",
+      "35139",
+      "35141",
+      "35150",
+      "35155",
+      "35200",
+      "35201",
+      "35207",
+      "35210",
+      "35213",
+      "35214",
+      "35215",
+      "35218",
+      "35219",
+      "35230",
+      "35907",
+      "35908",
+      "35916",
+      "41203"
+     ]
+    }
+   ],
+   "notes": [
+    "The student must also satisfy the Finance concentration."
+   ]
+  },
+  {
+   "id": "general_management",
+   "label": "General Management",
+   "units": 1100,
+   "components": [
+    {
+     "id": "flmbe_all",
+     "label": "All eight FLMBE lines",
+     "units": 800,
+     "type": "all_flmbe_rows"
+    },
+    {
+     "id": "extra",
+     "label": "Strategic Management or Behavioral Science courses",
+     "units": 300,
+     "courses_from_concentrations": [
+      "strategic_management",
+      "behavioral_science"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "healthcare",
+   "label": "Healthcare",
+   "units": 400,
+   "components": [
+    {
+     "id": "core",
+     "label": "Core",
+     "min_units": 100,
+     "courses": [
+      "33350",
+      "40206",
+      "40205"
+     ]
+    },
+    {
+     "id": "electives",
+     "label": "Electives",
+     "min_units": 200,
+     "max_units": 300,
+     "courses": [
+      "33350",
+      "33351",
+      "33352",
+      "33353",
+      "34205",
+      "34210",
+      "35118",
+      "42300",
+      "42310"
+     ]
+    },
+    {
+     "id": "experiential",
+     "label": "Experiential (pre-approved by petition)",
+     "max_units": 100,
+     "courses": [
+      "34104",
+      "34115",
+      "34702",
+      "34705",
+      "34709",
+      "35817",
+      "37201",
+      "37730",
+      "37703",
+      "40721",
+      "42709",
+      "42710"
+     ]
+    }
+   ],
+   "notes": [
+    "Experiential courses count only with a petition and a healthcare project."
+   ]
+  },
+  {
+   "id": "international_business",
+   "label": "International Business",
+   "units": 300,
+   "components": [
+    {
+     "id": "list",
+     "label": "International Business courses",
+     "units": 300,
+     "courses": [
+      "30131",
+      "33501",
+      "33502",
+      "33503",
+      "33520",
+      "35210",
+      "35213",
+      "35219"
+     ]
+    }
+   ],
+   "rules": [
+    {
+     "type": "at_least_one_of",
+     "courses": [
+      "33501",
+      "33502"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "marketing",
+   "label": "Marketing Management",
+   "units": 400,
+   "components": [
+    {
+     "id": "required",
+     "label": "Required: 37000 or 37110",
+     "units": 100,
+     "courses": [
+      "37000",
+      "37110"
+     ]
+    },
+    {
+     "id": "electives",
+     "label": "Electives",
+     "min_units": 300,
+     "courses": [
+      "37101",
+      "37107",
+      "37110",
+      "37113",
+      "37103",
+      "37105",
+      "37115",
+      "37200",
+      "37201",
+      "37202",
+      "37209",
+      "37212",
+      "37215",
+      "37310",
+      "37301",
+      "37730",
+      "37703",
+      "37810",
+      "37820",
+      "37882",
+      "37902",
+      "41301",
+      "41305"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "operations",
+   "label": "Operations Management",
+   "units": 300,
+   "components": [
+    {
+     "id": "list",
+     "label": "Operations courses",
+     "units": 300,
+     "courses": [
+      "36106",
+      "36109",
+      "40000",
+      "40101",
+      "40108",
+      "40110",
+      "40111",
+      "40206",
+      "40205",
+      "40721",
+      "40812"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "strategic_management",
+   "label": "Strategic Management",
+   "units": 400,
+   "components": [
+    {
+     "id": "list",
+     "label": "Strategic Management courses",
+     "units": 400,
+     "courses": [
+      "32200",
+      "33230",
+      "33503",
+      "34102",
+      "34103",
+      "34106",
+      "34108",
+      "34117",
+      "34220",
+      "34816",
+      "34882",
+      "37201",
+      "37200",
+      "39001",
+      "39101",
+      "42001",
+      "42108",
+      "42116",
+      "42119",
+      "42121",
+      "42133",
+      "42123",
+      "42124",
+      "42126",
+      "42127",
+      "42135",
+      "42136",
+      "42125",
+      "42705",
+      "42708",
+      "42709",
+      "42710",
+      "42711",
+      "42715",
+      "42730",
+      "42726",
+      "42813",
+      "42819",
+      "42820",
+      "42830"
+     ]
+    }
+   ]
+  }
+ ],
+ "concentration_rules": {
+  "grades": "A grade of D or better in each course of the sequence and a cumulative GPA of at least 2.33 in it.",
+  "overlap_caps": [
+   {
+    "concentrations": [
+     "applied_ai",
+     "business_analytics"
+    ],
+    "max_shared_units": 100
+   },
+   {
+    "concentrations": [
+     "entrepreneurship",
+     "strategic_management"
+    ],
+    "max_shared_units": 100
+   }
+  ],
+  "double_counting": "Booth's pages set no limit on a course counting toward both a concentration and Foundations/FLMBE, or toward several concentrations, beyond the two overlap caps."
+ },
+ "crosslists": [
+  {
+   "course": "LAWS 48230",
+   "counts_as": "38120",
+   "note": "Behavioral Economics (Pope), taken through the Law School as BUSN 38120."
+  }
+ ]
+}

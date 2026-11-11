@@ -1,9 +1,10 @@
 /**
  * Winter 2027 Schedule Builder: weekly calendar for picking Booth (BUSN) and Law School (LAWS) sections.
  *
- * Inputs: window.W27_SECTIONS and window.W27_DETAILS, set by data.js (built by scripts/build.py).
+ * Inputs: window.W27_SECTIONS, window.W27_DETAILS and window.W27_REQUIREMENTS, set by data.js (built by
+ * scripts/build.py), and window.W27Req from requirements.js (the degree-requirement engine).
  * Side effects: renders into the elements of index.html; keeps the viewer's selection in localStorage
- * under "booth-w27-schedule" and "w27-show-contemplated".
+ * under "booth-w27-schedule" and "w27-show-contemplated", and requirement tracking under "w27-requirements".
  */
 "use strict";
 
@@ -54,8 +55,10 @@ const SECTION_BY_ID = new Map(SECTIONS.map(s => [s.id, s]));
 const COURSE_LIST = [...COURSES.values()].sort((a, b) => a.dept.localeCompare(b.dept) || a.label.localeCompare(b.label) || a.code.localeCompare(b.code));
 
 /** App state. selected: ordered list of {code, id, hue, status}; status is "planned" (on the schedule) or
- *  "contemplated" (under consideration). focus: course code in highlight mode, or null. */
-const state = { selected: [], focus: null, query: "", school: "ALL", showContemplated: true };
+ *  "contemplated" (under consideration). focus: course code in highlight mode, or null.
+ *  view: "calendar" or "requirements" (the main tab). fills: a REQ.filterOptions id that limits the search
+ *  list to courses filling that requirement, or "" for no limit. */
+const state = { selected: [], focus: null, query: "", school: "ALL", showContemplated: true, view: "calendar", fills: "" };
 const SHOW_KEY = "w27-show-contemplated";
 
 function isContemplated(p) {
@@ -142,6 +145,118 @@ function load() {
 }
 
 function commit() { save(); render(); }
+
+// ---------- degree requirements: state and engine input ----------
+
+/** Requirement engine built from data/booth_requirements.json (see requirements.js for terms). */
+const REQ = W27Req.createEngine(window.W27_REQUIREMENTS);
+const REQ_KEY = "w27-requirements";
+const SOURCE_LABEL = { other: "other quarters", scheduled: "scheduled", contemplated: "contemplated" };
+const STATUS_LABEL = { completed: "Completed", enrolled: "Enrolled", planned: "Planned" };
+
+/** The visitor's requirement state: {program, lead, qwe, other, overrides, tracked}. Shape and rules:
+ *  REQ.validateState. other: [{id, num, title, quarter, status, units}]; overrides: [{num, kind, target}]. */
+let req = REQ.defaultState();
+/** Result of the last REQ.evaluate(); render() refreshes it. The course pop-up reads its usage map. */
+let lastEval = null;
+
+/** Normalized course number of a Winter course: "30000" for BUSN 30000, "LAWS 48230" for Law. */
+function winterNum(c) {
+  return W27Req.normalizeNumber(c.label);
+}
+
+/** First Winter course for each normalized number, used to fill in titles typed into Other quarters. */
+const WINTER_BY_NUM = new Map();
+for (const c of COURSE_LIST) {
+  const n = winterNum(c);
+  if (n && !WINTER_BY_NUM.has(n)) WINTER_BY_NUM.set(n, c);
+}
+
+/** Booth units a Winter course earns: the default (100) for Booth courses; for Law courses, the default only when
+ *  the requirements cross-list or list the course, or an override adds it, else 0. */
+function winterUnits(c) {
+  return c.dept === "BUSN" || REQ.isBoothCredit(winterNum(c), req.overrides) ? REQ.defaultUnits : 0;
+}
+
+/** Courses the engine assigns: other-quarter courses (uid "o:<id>") and selected Winter courses (uid "w:<code>"). */
+function reqCourses() {
+  const other = req.other.map(o => ({ uid: `o:${o.id}`, num: o.num, units: o.units, source: "other", title: o.title, quarter: o.quarter, status: o.status }));
+  const winter = state.selected.map(p => {
+    const c = COURSES.get(p.code);
+    return { uid: `w:${p.code}`, num: winterNum(c), units: winterUnits(c), source: isContemplated(p) ? "contemplated" : "scheduled", title: c.name, winterCode: p.code };
+  });
+  return [...other, ...winter];
+}
+
+function saveReq() {
+  try { localStorage.setItem(REQ_KEY, JSON.stringify(req)); } catch (e) { /* storage unavailable */ }
+}
+
+/** Loads requirement state; a missing, unreadable or invalid save starts empty rather than breaking the page. */
+function loadReq() {
+  try {
+    const raw = localStorage.getItem(REQ_KEY);
+    const v = raw ? REQ.validateState(JSON.parse(raw)) : null;
+    req = v && v.ok ? v.value : REQ.defaultState();
+  } catch (e) { req = REQ.defaultState(); }
+}
+
+function commitReq() { saveReq(); render(); }
+
+/** Adds an override for a course number. An identical override is not repeated; the opposite kind for the same
+ *  number and requirement is replaced, so the newest choice wins. */
+function addOverride(num, kind, target) {
+  req.overrides = req.overrides.filter(o => !(o.num === num && o.target === target));
+  req.overrides.push({ num, kind, target });
+  commitReq();
+}
+
+function removeOverride(index) {
+  req.overrides.splice(index, 1);
+  commitReq();
+}
+
+// ---------- backup (export and import) ----------
+
+const BACKUP_FORMAT = "w27-schedule-backup";
+
+/** Returns the visitor's full state as a backup object: schedule, contemplated courses and requirements. */
+function exportState() {
+  return {
+    format: BACKUP_FORMAT, version: 1, exported: new Date().toISOString(),
+    schedule: state.selected.map(({ code, id, hue, status }) => ({ code, id, hue, status })),
+    showContemplated: state.showContemplated,
+    requirements: req,
+  };
+}
+
+/**
+ * Parses and validates backup text from exportState().
+ * Returns {ok: true, selected, showContemplated, requirements, skipped} or {ok: false, error}. Sections that no
+ * longer exist in the Winter data are skipped and counted, not treated as errors.
+ */
+function parseBackup(text) {
+  let obj;
+  try { obj = JSON.parse(text); } catch (e) { return { ok: false, error: `This is not valid JSON (${e.message}).` }; }
+  if (!obj || typeof obj !== "object" || Array.isArray(obj) || obj.format !== BACKUP_FORMAT) {
+    return { ok: false, error: `This text is not a schedule-builder backup: it needs "format": "${BACKUP_FORMAT}".` };
+  }
+  if (obj.version !== 1) return { ok: false, error: `Backup version ${String(obj.version)} is not supported.` };
+  if (!Array.isArray(obj.schedule)) return { ok: false, error: "schedule must be a list." };
+  if (obj.showContemplated !== undefined && typeof obj.showContemplated !== "boolean") return { ok: false, error: "showContemplated must be true or false." };
+  const selected = [];
+  let skipped = 0;
+  for (const [i, p] of obj.schedule.entries()) {
+    if (!p || typeof p !== "object" || typeof p.id !== "string") return { ok: false, error: `schedule[${i}] needs a section "id".` };
+    if (p.status !== undefined && p.status !== "planned" && p.status !== "contemplated") return { ok: false, error: `schedule[${i}].status must be "planned" or "contemplated".` };
+    const sec = SECTION_BY_ID.get(p.id);
+    if (!sec || selected.some(s => s.code === sec.key)) { skipped++; continue; }
+    selected.push({ code: sec.key, id: p.id, hue: HUES.includes(p.hue) ? p.hue : null, status: p.status === "contemplated" ? "contemplated" : "planned" });
+  }
+  const r = REQ.validateState(obj.requirements ?? {});
+  if (!r.ok) return { ok: false, error: `requirements: ${r.error}` };
+  return { ok: true, selected, showContemplated: obj.showContemplated ?? true, requirements: r.value, skipped };
+}
 
 // ---------- formatting ----------
 
@@ -289,7 +404,8 @@ function renderCalendar() {
 
 function renderResults() {
   const tokens = state.query.toLowerCase().split(/\s+/).filter(Boolean);
-  const hits = COURSE_LIST.filter(c => (state.school === "ALL" || c.dept === state.school) && tokens.every(t => c.hay.includes(t)));
+  const hits = COURSE_LIST.filter(c => (state.school === "ALL" || c.dept === state.school) && tokens.every(t => c.hay.includes(t))
+    && (!state.fills || REQ.fills(winterNum(c), req.overrides, state.fills)));
   const chosen = new Map(state.selected.map(p => [p.code, p.status]));
   document.getElementById("rescount").textContent = `${hits.length} of ${COURSE_LIST.length}`;
   document.querySelectorAll("#schools button").forEach(b => b.setAttribute("aria-pressed", b.dataset.school === state.school));
@@ -300,9 +416,22 @@ function renderResults() {
     return `<li><button class="res" type="button" aria-pressed="${on}" data-code="${c.code}">
       <span class="box${maybe ? " maybe" : ""}" title="${maybe ? "Contemplated" : on ? "On schedule" : ""}">${maybe ? "?" : on ? "✓" : ""}</span>
       <span><span class="code">${c.label}</span><span class="t">${esc(c.name)}</span>
-      <span class="sub">${n} section${n > 1 ? "s" : ""}${progs ? " · " + esc(progs) : ""}</span></span>
+      <span class="sub">${n} section${n > 1 ? "s" : ""}${progs ? " · " + esc(progs) : ""}</span>${reqChips(c)}</span>
     </button><button class="info" type="button" data-info="${c.code}" aria-label="Details for ${c.label} ${esc(c.name)}">Details</button></li>`;
-  }).join("") : `<li class="empty" style="padding:8px 4px">No course matches “${esc(state.query)}”. Try a course number or part of the title.</li>`;
+  }).join("") : `<li class="empty" style="padding:8px 4px">No course matches${state.query ? ` “${esc(state.query)}”` : ""}${state.fills ? " with this Fills filter" : ""}. Try a course number or part of the title.</li>`;
+}
+
+/** Up to this many requirement chips show under a search result; the rest are summarized as "+N". */
+const MAX_RESULT_CHIPS = 3;
+
+/** Small chips naming the requirements a Winter course can count toward (overrides included). */
+function reqChips(c) {
+  const list = REQ.eligibleTargets(winterNum(c), req.overrides);
+  if (!list.length) return "";
+  const shown = list.slice(0, MAX_RESULT_CHIPS).map(t =>
+    `<span class="rq${t.override ? " ovr" : ""}" title="${esc(t.label + (t.override ? " (override)" : "") + (t.via ? ` (as ${t.via})` : ""))}">${esc(t.label)}</span>`);
+  const more = list.length - shown.length;
+  return `<span class="reqchips">${shown.join("")}${more > 0 ? `<span class="rq" title="${esc(list.slice(MAX_RESULT_CHIPS).map(t => t.label).join("\n"))}">+${more}</span>` : ""}</span>`;
 }
 
 function renderSelected(result) {
@@ -383,11 +512,166 @@ function renderFocusBar() {
 }
 
 function render() {
+  lastEval = REQ.evaluate({ program: req.program, courses: reqCourses(), overrides: req.overrides, tracked: req.tracked });
   const result = renderCalendar();
   renderResults();
   renderSelected(result);
   renderStats(result);
   renderFocusBar();
+  renderTabs();
+  if (state.view === "requirements") renderRequirements(lastEval);
+}
+
+function renderTabs() {
+  const onReq = state.view === "requirements";
+  document.getElementById("tab-calendar").setAttribute("aria-selected", String(!onReq));
+  document.getElementById("tab-requirements").setAttribute("aria-selected", String(onReq));
+  document.getElementById("calwrap").hidden = onReq;
+  document.getElementById("reqview").hidden = !onReq;
+}
+
+// ---------- requirements view ----------
+
+function fmtU(n) {
+  return n === Infinity ? "any" : n.toLocaleString("en-US");
+}
+
+/**
+ * Progress bar with one segment per source, plus a line of numbers. The data-* attributes carry the unit totals
+ * per source for tests and assistive tooling.
+ * Args: by: {other, scheduled, contemplated} units; target: units required; label: what the bar measures.
+ */
+function progressBar(by, target, label) {
+  const total = by.other + by.scheduled + by.contemplated;
+  const scale = Math.max(target, total, 1);
+  const parts = W27Req.SOURCES.filter(s => by[s]).map(s => `${fmtU(by[s])} ${SOURCE_LABEL[s]}`);
+  const segs = W27Req.SOURCES.filter(s => by[s]).map(s => `<span class="src-${s}" style="width:${(by[s] / scale * 100).toFixed(2)}%"></span>`).join("");
+  return `<div class="rprog" data-other="${by.other}" data-scheduled="${by.scheduled}" data-contemplated="${by.contemplated}">
+    <div class="rbar" role="img" aria-label="${esc(`${label}: ${fmtU(total)} of ${fmtU(target)} units${parts.length ? "; " + parts.join(", ") : ""}`)}">${segs}</div>
+    <div class="rnums"><b>${fmtU(total)}</b> / ${fmtU(target)} units${parts.length ? " · " + esc(parts.join(" · ")) : ""}</div>
+  </div>`;
+}
+
+/** A course as a chip styled by source. Winter courses are buttons that open the course pop-up. */
+function courseChip(c, { override = false, via = null } = {}) {
+  const where = c.source === "other" ? [c.quarter, STATUS_LABEL[c.status]].filter(Boolean).join(", ") : SOURCE_LABEL[c.source];
+  const units = c.units !== REQ.defaultUnits ? ` · ${fmtU(c.units)} u` : "";
+  const inner = `<b>${esc(c.num)}</b>${c.title ? ` ${esc(c.title)}` : ""}${units}`;
+  const title = esc(`${c.num}${c.title ? " " + c.title : ""} (${where})`);
+  const chip = c.winterCode
+    ? `<button type="button" class="rc src-${c.source}" data-course="${esc(c.winterCode)}" title="${title}">${inner}</button>`
+    : `<span class="rc src-${c.source}" title="${title}">${inner}</span>`;
+  return chip + (via ? `<span class="muted">as ${esc(via)} </span>` : "") + (override ? `<span class="badge">override</span>` : "");
+}
+
+function unitsOfRows(rows) {
+  const by = { other: 0, scheduled: 0, contemplated: 0 };
+  for (const r of rows) if (r.course) by[r.course.source] += r.units;
+  return by;
+}
+
+function rowsTable(rows) {
+  let group = null;
+  return `<table class="secs rrows"><tbody>${rows.map(r => {
+    const head = r.group && r.group !== group ? `<tr class="grprow"><td colspan="2">${esc(group = r.group)}</td></tr>` : "";
+    const cell = r.course
+      ? courseChip(r.course, r) + (r.filled ? "" : `<div class="soft">${fmtU(r.units)} of ${fmtU(REQ.defaultUnits)} units: pair it with another course from this line</div>`)
+      : `<span class="muted">No course yet</span>`;
+    return `${head}<tr data-row="${esc(r.id)}"><td>${esc(r.label)}</td><td>${cell}${r.note ? `<div class="req-note">${esc(r.note)}</div>` : ""}</td></tr>`;
+  }).join("")}</tbody></table>`;
+}
+
+function statusChip(done, total, need) {
+  return `<span class="chip${done ? " ok" : ""}">${done ? "Complete" : `${total} of ${need}`}</span>`;
+}
+
+/** Renders the degree panel, the tracked concentrations and the two lists from an evaluation result. */
+function renderRequirements(ev) {
+  const d = REQ.degree;
+  const found = ev.rows.filter(r => r.section === "foundations"), flmbe = ev.rows.filter(r => r.section === "flmbe");
+  const coreUnits = d.foundations.units + d.flmbe.units;
+  const boothUnits = boothUnitsSoFar();
+  document.getElementById("req-degree").innerHTML = `
+    <h2>Degree requirements <span>${esc(ev.program.label)}</span></h2>
+    <h3 class="req-sub">Foundations ${statusChip(ev.foundations.filled >= ev.foundations.choose, ev.foundations.filled, `${ev.foundations.choose} lines`)}</h3>
+    ${progressBar(unitsOfRows(found), d.foundations.units, "Foundations")}
+    ${rowsTable(found)}
+    <h3 class="req-sub">${esc(d.flmbe.label)} (FLMBE) ${statusChip(ev.flmbe.filled >= ev.flmbe.choose, ev.flmbe.filled, `${ev.flmbe.choose} of ${ev.flmbe.total} lines`)}</h3>
+    ${progressBar(unitsOfRows(flmbe), d.flmbe.units, "FLMBE")}
+    ${rowsTable(flmbe)}
+    <p class="req-note">${esc(d.distinct_credit_rule)}</p>
+    <ul class="req-note">${d.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>
+    <h3 class="req-sub">Electives</h3>
+    ${progressBar(ev.electives.bySource, Math.max(0, ev.total.target - coreUnits), "Electives")}
+    <p class="req-note">${esc(d.electives)}</p>
+    <h3 class="req-sub" id="req-total">Total units ${statusChip(ev.total.units >= ev.total.target, fmtU(ev.total.units), fmtU(ev.total.target))}</h3>
+    ${progressBar(ev.total.bySource, ev.total.target, "Total units")}
+    ${ev.program.minBooth ? `<p class="req-note">At least ${fmtU(ev.program.minBooth)} units must be Booth courses. Booth units so far: ${fmtU(boothUnits)}.</p>` : ""}
+    ${ev.program.note ? `<p class="req-note">${esc(ev.program.note)}</p>` : ""}`;
+
+  document.getElementById("req-picker").innerHTML = REQ.concentrations.map(c =>
+    `<label><input type="checkbox" data-track="${esc(c.id)}"${req.tracked.includes(c.id) ? " checked" : ""}>${esc(c.label)}</label>`).join("");
+  const rules = window.W27_REQUIREMENTS.concentration_rules;
+  document.getElementById("req-concs").innerHTML = (ev.concentrations.length ? ev.concentrations.map(concCard).join("")
+    : `<p class="empty">Pick concentrations above to track them.</p>`)
+    + `<ul class="req-note"><li>${esc(rules.grades)}</li><li>${esc(rules.double_counting)}</li></ul>`;
+
+  document.getElementById("oq-count").textContent = req.other.length || "";
+  document.getElementById("oq-list").innerHTML = req.other.length ? req.other.map(o => {
+    const course = { num: o.num, title: o.title, units: o.units, source: "other", quarter: o.quarter, status: o.status };
+    return `<li data-oq="${esc(o.id)}"><span class="grow">${courseChip(course)}${o.quarter ? `<span class="muted">${esc(o.quarter)}</span>` : ""}</span>
+      <label><span class="sr">Status</span><select data-oq-status>${W27Req.STATUSES.map(s => `<option value="${s}"${s === o.status ? " selected" : ""}>${STATUS_LABEL[s]}</option>`).join("")}</select></label>
+      <label><span class="sr">Units</span><input type="number" min="0" max="1000" step="50" value="${o.units}" data-oq-units></label>
+      <button type="button" class="x" data-oq-remove aria-label="Remove ${esc(o.num)}" title="Remove">×</button></li>`;
+  }).join("") : `<li class="empty">No courses from other quarters yet.</li>`;
+
+  document.getElementById("ov-count").textContent = req.overrides.length || "";
+  document.getElementById("ov-list").innerHTML = req.overrides.length ? req.overrides.map((o, i) => overrideItem(o, i)).join("")
+    : `<li class="empty">No overrides.</li>`;
+
+  document.getElementById("req-program").value = req.program;
+  document.querySelectorAll("[data-noncredit]").forEach(b => { b.checked = !!req[b.dataset.noncredit]; });
+}
+
+/** Units from Booth-numbered or cross-listed courses, all sources (for the program's minimum Booth units). */
+function boothUnitsSoFar() {
+  const xl = new Set(REQ.crosslists.map(x => x.course));
+  return reqCourses().filter(c => /^\d{5}$/.test(c.num) || xl.has(c.num)).reduce((s, c) => s + c.units, 0);
+}
+
+function overrideItem(o, i) {
+  const t = REQ.targets.get(o.target);
+  return `<li><span class="grow"><span class="badge">override</span><b>${esc(o.num)}</b> ${o.kind === "add" ? "also counts toward" : "does not count toward"} ${esc(t ? t.label : o.target)}</span>
+    <button type="button" class="x" data-ov-remove="${i}" aria-label="Remove this override" title="Remove">×</button></li>`;
+}
+
+/** Describes a component's unit rule: "100 units", "at least 200, at most 300 units", "up to 100 units". */
+function needText(k) {
+  if (k.rowsTotal) return `all ${k.rowsTotal} lines`;
+  if (k.min !== null && k.max !== null) return `at least ${fmtU(k.min)}, at most ${fmtU(k.max)} units`;
+  if (k.min !== null) return `at least ${fmtU(k.min)} units`;
+  if (k.max !== null && !k.need) return `up to ${fmtU(k.max)} units, optional`;
+  return `${fmtU(k.need)} units`;
+}
+
+function concCard(e) {
+  const status = e.done ? `<span class="chip ok">Complete</span>`
+    : e.blockedBy.length ? `<span class="chip wait">Needs ${esc(e.blockedBy.map(id => REQ.concentrations.find(c => c.id === id).label).join(", "))}</span>`
+    : `<span class="chip">${fmtU(e.total)} of ${fmtU(e.units)} units</span>`;
+  const comps = e.components.map(k => `<div class="comp" data-comp="${esc(k.id)}">
+      <div class="lbl">${esc(k.label)}<span class="muted">${esc(needText(k))}${k.rowsTotal ? ` · ${k.rowsFilled} of ${k.rowsTotal}` : ""}${k.done && (k.need || k.rowsTotal) ? " · done" : ""}</span></div>
+      <div>${progressBar(k.bySource, k.need || k.max || 0, k.label)}
+        <div>${k.entries.length ? k.entries.map(x => courseChip(x.course, x)).join("") : `<span class="muted">No course counted yet</span>`}</div></div>
+    </div>`).join("");
+  const caps = e.caps.map(cap => `<p class="req-note">Overlap cap with ${esc(REQ.concentrations.find(c => c.id === cap.with).label)}: at most ${fmtU(cap.max)} shared units; sharing ${fmtU(cap.sharedUnits)}${cap.shared.length ? ` (${esc(cap.shared.map(c => c.num).join(", "))})` : ""}.</p>`).join("");
+  return `<article class="conc" data-conc="${esc(e.id)}">
+    <header><h3>${esc(e.label)}</h3>${status}</header>
+    ${progressBar(e.bySource, e.units, e.label)}
+    ${e.blockedBy.length ? `<p class="soft">Counts only once ${esc(e.blockedBy.map(id => REQ.concentrations.find(c => c.id === id).label).join(", "))} is complete.</p>` : ""}
+    ${e.ruleMessages.map(m => `<p class="soft">${esc(m)}</p>`).join("")}
+    ${comps}${caps}
+    ${e.notes.length ? `<ul class="req-note">${e.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
+  </article>`;
 }
 
 // ---------- course and professor pop-ups ----------
@@ -474,6 +758,7 @@ function openCourse(code, push = true) {
   ) + `<div class="dlg-body">
     <section><h3>Description</h3>${descHtml}</section>
     ${notes.length ? `<section><h3>Notes</h3><ul>${notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul></section>` : ""}
+    ${countsTowardHtml(c)}
     <section><h3>Sections</h3><div style="overflow-x:auto"><table class="secs">
       <thead><tr><th>Sec</th><th>Instructor</th><th>Meets</th><th>${c.dept === "LAWS" ? "Room · dates" : "Program"}</th></tr></thead>
       <tbody>${rows}</tbody></table></div></section>
@@ -484,6 +769,42 @@ function openCourse(code, push = true) {
       : `<button type="button" class="btn primary" data-dlg="add" data-code="${c.code}" data-to="planned">Add to schedule</button>
          <button type="button" class="btn" data-dlg="add" data-code="${c.code}" data-to="contemplated">Add as contemplated</button>`}</div>
   </div>`);
+}
+
+/** Options for an override's requirement select: Foundations, FLMBE, then one group per concentration. */
+function targetOptions(selected = "") {
+  const groups = new Map();
+  for (const t of REQ.targets.values()) {
+    const g = t.concId ? REQ.concentrations.find(c => c.id === t.concId).label : t.id.startsWith("foundations:") ? "Foundations" : "FLMBE";
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(`<option value="${esc(t.id)}"${t.id === selected ? " selected" : ""}>${esc(t.concId ? t.short : t.label)}</option>`);
+  }
+  return [...groups].map(([g, opts]) => `<optgroup label="${esc(g)}">${opts.join("")}</optgroup>`).join("");
+}
+
+/** The pop-up's "Counts toward" section: where the course counts now, where it could count, its overrides, and a
+ *  form to add an override for its number. */
+function countsTowardHtml(c) {
+  const num = winterNum(c);
+  const selected = state.selected.some(p => p.code === c.code);
+  const used = selected && lastEval ? lastEval.usage.get(`w:${c.code}`) || [] : [];
+  const eligible = REQ.eligibleTargets(num, req.overrides);
+  const mine = req.overrides.map((o, i) => [o, i]).filter(([o]) => o.num === num);
+  const chip = t => `<span class="rq${t.override ? " ovr" : ""}">${t.override ? "override · " : ""}${esc(t.label)}${t.via ? ` (as ${esc(t.via)})` : ""}</span>`;
+  const credit = winterUnits(c) > 0;
+  return `<section class="counts"><h3>Counts toward</h3>
+    ${credit ? "" : `<p class="muted">Law School course: it earns no Booth units unless the requirements cross-list it or an override adds it.</p>`}
+    ${selected ? `<p>${used.length ? "With your courses, it counts now toward:" : "With your courses, it counts toward no listed requirement now; its units go to electives."}</p>
+      ${used.length ? `<div class="reqchips">${used.map(chip).join("")}</div>` : ""}` : ""}
+    <p>${eligible.length ? "It can count toward:" : "It is not on any requirement list."}</p>
+    ${eligible.length ? `<div class="reqchips">${eligible.map(chip).join("")}</div>` : ""}
+    ${mine.length ? `<ul class="req-list">${mine.map(([o, i]) => overrideItem(o, i)).join("")}</ul>` : ""}
+    <div class="req-form">
+      <label>Override for ${esc(num)}<select id="dlg-ov-kind"><option value="add">also counts toward</option><option value="remove">does not count toward</option></select></label>
+      <label class="grow"><span class="sr">Requirement</span><select id="dlg-ov-target">${targetOptions()}</select></label>
+      <button type="button" class="btn" data-dlg="ovr-add" data-code="${c.code}">Add override</button>
+    </div>
+  </section>`;
 }
 
 /** Opens the professor pop-up: title, bio, faculty-page link and this quarter's courses. */
@@ -521,6 +842,18 @@ DLG.addEventListener("click", e => {
   if (act.dataset.dlg === "add") { addCourse(code, act.dataset.to); openCourse(code, false); }
   if (act.dataset.dlg === "status") { setStatus(code, act.dataset.to); openCourse(code, false); }
   if (act.dataset.dlg === "remove") { removeCourse(code); openCourse(code, false); }
+  if (act.dataset.dlg === "ovr-add") {
+    addOverride(winterNum(COURSES.get(code)), DLG.querySelector("#dlg-ov-kind").value, DLG.querySelector("#dlg-ov-target").value);
+    openCourse(code, false);
+  }
+});
+DLG.addEventListener("click", e => {
+  // Override × buttons in the pop-up; the course to reopen is the one on top of the pop-up history.
+  const x = e.target.closest("[data-ov-remove]");
+  if (!x) return;
+  removeOverride(Number(x.dataset.ovRemove));
+  const top = dlgStack[dlgStack.length - 1];
+  if (top?.kind === "course") openCourse(top.code, false);
 });
 DLG.addEventListener("close", () => { dlgStack = []; });
 
@@ -613,6 +946,121 @@ document.getElementById("schools").addEventListener("click", e => {
 
 document.getElementById("search").addEventListener("input", e => { state.query = e.target.value; renderResults(); });
 
+document.getElementById("fills").addEventListener("change", e => { state.fills = e.target.value; renderResults(); });
+
+document.querySelector(".tabs").addEventListener("click", e => {
+  const tab = e.target.closest("[role=tab]");
+  if (!tab) return;
+  state.view = tab.id === "tab-requirements" ? "requirements" : "calendar";
+  if (state.view === "requirements") state.focus = null;
+  render();
+});
+
+// ---------- requirements view events ----------
+
+/** Fills the selects that do not change with the visitor's state. Runs once at start-up. */
+function setupRequirementControls() {
+  document.getElementById("fills").innerHTML = `<option value="">Any requirement</option>` +
+    ["Foundations", "FLMBE", "Concentrations"].map(g => `<optgroup label="${g}">${REQ.filterOptions.filter(o => o.group === g)
+      .map(o => `<option value="${esc(o.id)}">${esc(o.label)}</option>`).join("")}</optgroup>`).join("");
+  document.getElementById("req-program").innerHTML = REQ.programs.map(p => `<option value="${esc(p.id)}">${esc(p.label)} · ${fmtU(p.total_units)} units</option>`).join("");
+  document.getElementById("req-noncredit").innerHTML = REQ.degree.non_credit.map(n =>
+    `<label title="${esc(n.note || "")}"><input type="checkbox" data-noncredit="${esc(n.id)}"> ${esc(n.label)}</label>`).join("");
+  document.getElementById("ov-target").innerHTML = targetOptions();
+}
+
+function showMsg(id, text, isError = false) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.classList.toggle("err", isError);
+}
+
+/** Fills the Other quarters title from the Winter data while the typed number matches a Winter course. */
+document.getElementById("oq-num").addEventListener("input", e => {
+  const title = document.getElementById("oq-title");
+  const match = WINTER_BY_NUM.get(W27Req.normalizeNumber(e.target.value));
+  if (match && (!title.value || title.dataset.auto === "1")) { title.value = match.name; title.dataset.auto = "1"; }
+  else if (!match && title.dataset.auto === "1") { title.value = ""; title.dataset.auto = ""; }
+});
+document.getElementById("oq-title").addEventListener("input", e => { e.target.dataset.auto = ""; });
+
+document.getElementById("oq-add").addEventListener("click", () => {
+  const numEl = document.getElementById("oq-num"), titleEl = document.getElementById("oq-title");
+  const num = W27Req.normalizeNumber(numEl.value);
+  const units = Number(document.getElementById("oq-units").value);
+  if (!num) { showMsg("oq-msg", "Enter a course number such as 35100, ECON 30100 or LAWS 48230.", true); numEl.focus(); return; }
+  if (!Number.isInteger(units) || units < 0 || units > 1000) { showMsg("oq-msg", "Units must be a whole number from 0 to 1000.", true); return; }
+  const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  req.other.push({ id, num, title: titleEl.value.trim().slice(0, 200), quarter: document.getElementById("oq-quarter").value.trim().slice(0, 40),
+                   status: document.getElementById("oq-status").value, units });
+  numEl.value = ""; titleEl.value = ""; titleEl.dataset.auto = "";
+  document.getElementById("oq-units").value = REQ.defaultUnits;
+  showMsg("oq-msg", `Added ${num}.`);
+  commitReq();
+  numEl.focus();
+});
+
+document.getElementById("ov-add").addEventListener("click", () => {
+  const num = W27Req.normalizeNumber(document.getElementById("ov-num").value);
+  if (!num) { showMsg("ov-msg", "Enter a course number such as 38120 or ECON 30100.", true); return; }
+  addOverride(num, document.getElementById("ov-kind").value, document.getElementById("ov-target").value);
+  document.getElementById("ov-num").value = "";
+  showMsg("ov-msg", `Override added for ${num}.`);
+});
+
+document.getElementById("reqview").addEventListener("change", e => {
+  const el = e.target;
+  if (el.id === "req-program") { req.program = el.value; commitReq(); return; }
+  if (el.dataset.noncredit) { req[el.dataset.noncredit] = el.checked; commitReq(); return; }
+  if (el.dataset.track !== undefined) {
+    req.tracked = el.checked ? [...req.tracked, el.dataset.track] : req.tracked.filter(id => id !== el.dataset.track);
+    commitReq();
+    return;
+  }
+  const row = el.closest("[data-oq]");
+  const o = row && req.other.find(x => x.id === row.dataset.oq);
+  if (!o) return;
+  if (el.matches("[data-oq-status]")) o.status = el.value;
+  if (el.matches("[data-oq-units]")) {
+    const units = Number(el.value);
+    if (!Number.isInteger(units) || units < 0 || units > 1000) { el.value = o.units; showMsg("oq-msg", "Units must be a whole number from 0 to 1000.", true); return; }
+    o.units = units;
+  }
+  commitReq();
+});
+
+document.getElementById("reqview").addEventListener("click", e => {
+  const course = e.target.closest("[data-course]");
+  if (course) { openCourse(course.dataset.course); return; }
+  const oq = e.target.closest("[data-oq-remove]");
+  if (oq) { req.other = req.other.filter(x => x.id !== oq.closest("[data-oq]").dataset.oq); commitReq(); return; }
+  const ov = e.target.closest("[data-ov-remove]");
+  if (ov) { removeOverride(Number(ov.dataset.ovRemove)); return; }
+  if (e.target.closest("#exp-copy")) {
+    const text = JSON.stringify(exportState(), null, 2);
+    const box = document.getElementById("imp-text");
+    box.value = text;
+    const done = () => showMsg("imp-msg", "Backup copied. The same text is in the box below.");
+    const manual = () => { box.select(); showMsg("imp-msg", "Your browser blocked copying. The backup is selected in the box below: copy it from there."); };
+    try { navigator.clipboard.writeText(text).then(done, manual); } catch (err) { manual(); }
+    return;
+  }
+  if (e.target.closest("#imp-go")) {
+    const text = document.getElementById("imp-text").value.trim();
+    if (!text) { showMsg("imp-msg", "Paste a backup into the box first.", true); return; }
+    const r = parseBackup(text);
+    if (!r.ok) { showMsg("imp-msg", `Nothing was restored. ${r.error}`, true); return; }
+    state.selected = [];
+    for (const p of r.selected) state.selected.push({ ...p, hue: p.hue ?? nextHue() });
+    state.showContemplated = r.showContemplated;
+    state.focus = null;
+    req = r.requirements;
+    save();
+    commitReq();
+    showMsg("imp-msg", `Restored ${r.selected.length} Winter course${r.selected.length === 1 ? "" : "s"}, ${req.other.length} other-quarter course${req.other.length === 1 ? "" : "s"} and ${req.overrides.length} override${req.overrides.length === 1 ? "" : "s"}.${r.skipped ? ` Skipped ${r.skipped} section${r.skipped === 1 ? "" : "s"} not in the Winter data.` : ""}`);
+  }
+});
+
 document.getElementById("results").addEventListener("click", e => {
   const info = e.target.closest("[data-info]");
   if (info) { openCourse(info.dataset.info); return; }
@@ -677,4 +1125,6 @@ document.addEventListener("keydown", e => {
 });
 
 load();
+loadReq();
+setupRequirementControls();
 render();
