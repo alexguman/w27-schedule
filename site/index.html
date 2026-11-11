@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Course data comes partly from login-only university systems; keep the page out of search engines. -->
+<meta name="robots" content="noindex, nofollow">
+<title>Winter 2027 Schedule Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Serif:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1><span>Winter 2027</span> Schedule Builder</h1>
+    <div class="stats" id="stats"></div>
+    <span class="hint">Press Details on any course, or click an instructor, for descriptions and bios.</span>
+  </header>
+
+  <aside class="rail">
+    <section class="panel">
+      <h2><label for="search">Add courses</label><span id="rescount"></span></h2>
+      <div class="seg" id="schools" role="group" aria-label="School">
+        <button type="button" id="school-all" data-school="ALL">All</button>
+        <button type="button" id="school-busn" data-school="BUSN">Booth</button>
+        <button type="button" id="school-laws" data-school="LAWS">Law</button>
+      </div>
+      <input id="search" type="search" placeholder="Name or code, e.g. 30000 or Evidence" autocomplete="off">
+      <ul id="results"></ul>
+    </section>
+    <section class="panel">
+      <h2>Selected <span id="selcount"></span></h2>
+      <ul id="selected"></ul>
+    </section>
+  </aside>
+
+  <main class="calwrap" id="calwrap">
+    <div class="focusbar" id="focusbar"></div>
+    <div class="cal" id="cal"></div>
+    <div class="legend">
+      <span><i class="lg-ghost"></i>Other section of a selected course</span>
+      <span><i class="lg-conf"></i>Time conflict</span>
+      <span><i class="lg-maybe"></i>Contemplated</span>
+      <span><i class="lg-warn"></i>Contemplated, clashes with your schedule</span>
+      <label for="showmaybe"><input type="checkbox" id="showmaybe" checked> Show contemplated</label>
+    </div>
+  </main>
+</div>
+
+<dialog id="dlg" aria-labelledby="dlg-title"></dialog>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

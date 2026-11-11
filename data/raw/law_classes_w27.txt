@@ -1,0 +1,98 @@
+20227|30211|01|CRS|O|34/85|Casey ~ Mon Wed Thu : 01:30 PM-02:35 PM|Civil Procedure (for LLMs)
+20230|40101|01|CRS|C|0/0|Fahey ~ Tue Fri : 01:30 PM-03:15 PM|Constitutional Law I: Governmental Structure
+20229|40301|01|CRS|C|0/0|Huq ~ Mon Wed Thu : 09:45 AM-10:50 AM|Constitutional Law III: Equal Protection and Substantive Due Process
+20236|41015|01|CRS|C|0/0|Neal ~ Mon Wed Thu : 01:30 PM-02:35 PM|Ethics for Transactional Lawyers
+20278|41016|01|SEM|C|0/0|Canty, Feeney, Koski ~ Mon : 04:00 PM-06:00 PM|Professional Responsibility: Representing Business Organizations
+20238|41101|01|CRS|C|0/0|LaCroix ~ Mon Wed Thu : 11:00 AM-12:05 PM|Federal Courts
+20237|41601|01|CRS|C|0/0|Leiter ~ Mon Wed Thu : 02:45 PM-03:50 PM|Evidence
+20225|42301|01|CRS|C|0/0|Birdthistle ~ Mon Wed Thu : 11:00 AM-12:05 PM|Business Organizations
+20272|42401|01|CRS|C|0/0|Robertson ~ Mon Wed Thu : 09:45 AM-10:50 AM|Securities Regulation
+20222|42801|01|CRS|C|0/0|Wood ~ Mon Wed Thu : 08:30 AM-09:35 AM|Antitrust Law
+20240|43200|01|CRS|O|16/34|Hallett ~ Tue Fri : 01:30 PM-03:15 PM|Immigration Law
+20246|43228|01|CRS|O|26/56|Fennell ~ Tue Fri : 01:30 PM-03:15 PM|Local Government Law
+20232|43235|01|CRS|C|0/0|Buccola ~ Mon Wed Thu : 01:30 PM-02:35 PM|Corporate Restructuring
+20233|43242|01|CRS|O|27/56|Weisbach ~ Mon Wed Thu : 09:00 AM-10:35 AM|Corporate Tax
+20244|43247|01|SEM|C|0/0|Sylla ~ Tue Wed Thu Fri : 08:30 AM-09:35 AM   &   Mon Tue Wed Thu Fri : 08:30 AM-09:35 AM|Legal Elements of Accounting
+26001|43262|01|CRS|C|0/0|Parrin ~ Mon Wed Thu : 08:30 AM-09:35 AM|International Human Rights Law
+20287|43269|01|CRS|C|0/0|Bradley ~ Mon Wed Thu : 11:00 AM-12:05 PM|Foreign Relations Law and the Constitution
+26000|43284|01|CRS|C|0/0|Prasad ~ Tue Fri : 10:25 AM-12:10 PM|Professional Responsibility
+25690|43601|01|CRS|C|0/0|Baharad ~ Tue : 09:30 AM-11:45 AM   &   Mon Wed Thu : 09:25 AM-10:50 AM|Insurance Law
+20242|44121|01|CRS|C|0/0|Roin ~ Mon Wed Thu : 11:00 AM-12:05 PM|Introductory Income Taxation
+20219|46101|01|CRS|C|0/0|Nou ~ Mon Wed Thu : 02:45 PM-03:50 PM|Administrative Law
+20239|46501|01|CRS|O|14/85|Fairley ~ Tue Fri : 01:30 PM-03:15 PM|Federal Criminal Law
+20264|47201|01|CRS|C|0/0|Davidson ~ Mon Wed Thu : 11:00 AM-12:05 PM|Criminal Procedure I: The Investigative Process
+20303|48230|01|CRS|C|0/0|Pope ~ Thu : 04:00 PM-07:15 PM|Behavioral Economics
+20304|48231|01|CRS|C|0/0|Miles ~ Mon Wed Thu : 09:45 AM-10:50 AM|Non-Profit Organizations
+20228|50202|01|SEM|C|0/0|Stone|Constitutional Decisionmaking
+20298|52202|01|SEM|C|0/0|Shepro ~ Mon : 04:00 PM-06:00 PM|Current Controversies in Corporate and Securities Law
+20249|52410|01|SEM|C|0/0|Fitzpatrick ~ Tue : 06:10 PM-08:10 PM|Pretrial Litigation: Strategy and Advocacy
+20245|53101|01|SEM|C|0/0|Morris ~ Thu : 04:00 PM-06:00 PM|Legal Profession: Ethics
+20226|53194|01|SEM|C|0/0|Crow, Worek ~ Wed : 04:00 PM-06:00 PM|Business Planning
+20231|53201|01|SEM|C|0/0|Boutros ~ Mon : 04:00 PM-06:00 PM|Corporate Criminal Prosecutions and Investigations
+20248|53221|01|SEM|C|0/0|Fitzgerald, Scudder ~ Tue : 04:00 PM-06:00 PM|National Security Law
+20234|53227|01|SEM|C|0/0|Kohn, Starshak ~ Thu : 04:00 PM-06:00 PM|Cross-Border Transactions: Lending
+20275|53263|01|SEM|C|0/0|Total Enrollment: 0/35 ~ Hirschel ~ Wed : 04:00 PM-06:00 PM|Visual Arts and the Law
+20220|53264|01|SEM|C|0/0|Lewis ~ Mon : 04:00 PM-06:00 PM|Advanced Legal Research
+20258|53271|01|SEM|C|0/0|Neal ~ Thu : 09:45 AM-11:45 AM|Contract Drafting and Review
+20276|53271|02|SEM|C|0/0|Drake ~ Wed : 08:30 AM-10:30 AM|Contract Drafting and Review
+20289|53350|01|SEM|C|0/0|Junewicz ~ Fri : 09:45 AM-11:45 AM|Capital Markets Transactions and the Underwriting Process
+20280|53365|01|SEM|C|0/0|Taylor ~ Mon : 04:00 PM-06:00 PM|LGBT Law
+20255|53382|01|SEM|C|0/0|Buss ~ Tue : 06:10 PM-08:10 PM|The Constitutional Rights of Young People, from Young People's Point of View
+20299|53385|01|SEM|C|0/0|Nou ~ Thu : 04:00 PM-06:00 PM|Advanced Administrative Law
+20243|53411|01|SEM|C|0/0|Birdthistle ~ Tue : 04:00 PM-06:00 PM|Investment Funds
+20266|53426|01|SEM|C|0/0|Taylor ~ Tue : 04:00 PM-06:00 PM|Disability Rights Law
+20256|53441|01|SEM|C|0/0|Davidson ~ Fri : 03:30 PM-05:30 PM|The New Abolitionists
+20250|53463|01|SEM|C|0/0|Didwania ~ Wed : 04:00 PM-06:00 PM|Privacy and Modern Policing
+20253|53482|01|SEM|C|0/0|Johnson ~ Wed : 04:00 PM-06:00 PM|Resolving Mass Tort Liability
+20290|53497|01|SEM|C|0/0|Barry ~ Thu : 09:45 AM-11:45 AM|Editing, Advocacy, and AI
+20223|53510|01|SEM|C|0/0|Maloney, Poole ~ Wed : 01:50 PM-03:50 PM|Building Legal Change: Moving Advocacy Outside of Court
+20254|53513|01|SEM|C|0/0|Bradley ~ Tue : 09:45 AM-11:45 AM|Sovereign Power and the Constitution
+20221|53517|01|SEM|C|0/0|Kendall ~ Wed : 04:00 PM-06:00 PM|Advanced Seminar on Human Trafficking: Legal, Ethical, and Global Perspectives
+20279|53530|01|SEM|C|0/0|Flanagan ~ Wed : 09:45 AM-11:45 AM|States as Laboratories for Workplace Rights
+20251|53545|01|SEM|C|0/0|Mcadams ~ Mon Wed Thu : 11:00 AM-12:05 PM|Professional Ethics in Criminal Advocacy
+20224|53548|01|SEM|C|0/0|Erbacher ~ Mon : 09:45 AM-11:45 AM|Business and Transactional Legal Research
+22650|53551|01|SEM|C|0/0|Parker ~ Fri : 09:45 AM-11:45 AM|AI Lab
+20300|53557|01|SEM|C|0/0|Bunge ~ Mon : 06:10 PM-08:10 PM|Election Law
+20281|53564|01|SEM|C|0/0|Henderson ~ Wed : 09:45 AM-11:45 AM|"Primitive Law": Order, Custom, and Justice Beyond the State
+20282|53565|01|SEM|C|0/0|Baude ~ Mon : 04:00 PM-06:00 PM|Advanced Topics in Federal Courts
+20283|53566|01|SEM|C|0/0|Slade ~ Tue : 04:00 PM-06:00 PM|Bankruptcy Advocacy
+20284|53567|01|SEM|C|0/0|Fennell ~ Thu : 04:00 PM-06:00 PM|Distributive Justice
+20285|53568|01|SEM|C|0/0|Buccola, Lawler ~ Mon : 04:00 PM-06:00 PM|Ethos Through Text
+20286|53569|1|SEM|C|0/0|Fairley ~ Tue : 04:00 PM-06:00 PM|Comparative Contemporary Policing
+20293|53574|01|SEM|C|0/0|Gil ~ Tue : 09:45 AM-11:45 AM|Land Use Regulation and Housing Policy
+20294|53575|01|SEM|C|0/0|Ford, Roin ~ Wed : 04:00 PM-06:00 PM|Emerging Legal Issues in Digital Assets and Blockchain Technologies
+23046|53580|01|SEM|C|0/0|Brooks, Khodarkovsky ~ Wed : 06:10 PM-08:10 PM|Regulating Digital Finance: Blockchain, AI and the Future of Financial Law
+25663|53581|01|SEM|C|0/0|Bays ~ Tue : 06:10 PM-08:10 PM|Trial Team
+20252|54303|01|SEM|C|0/0|Total Enrollment: 0/30 ~ Fennell ~ Wed : 04:00 PM-06:00 PM|Racism, Law, and Social Sciences
+20257|57013|01|SEM|C|0/0|Bray, Masur|Canonical Ideas in American Legal Thought
+20301|63402|01|SEM|C|0/0|Baude, Bray, Davidson, Fahey, LaCroix, Lakier, Miller, Nou ~ Tue : 03:30 PM-05:30 PM|Workshop: Public Law and Legal Theory
+20305|63612|01|SEM|C|0/0|Peterson, Starr|Workshop: Constitutional Law
+20270|66012|01|SEM|C|0/0|Goldin, Kim ~ Tue : 03:30 PM-05:30 PM|Workshop: Law and Economics
+20273|68711|02|SEM|C|0/0|Bernstein ~ Thu : 04:00 PM-06:00 PM|Workshop: Legal Scholarship II
+20247|81018|01|SEM|C|0/0|Eatherton, Reynolds ~ Fri : 09:45 AM-11:45 AM|Mediation and Arbitration: Skills for the Modern Advocate
+20268|90211|01|CLN|C|0/0|Hallett ~ Tue : 09:45 AM-11:45 AM|Immigrants' Rights Clinic
+20267|90216|01|CLN|C|0/0|Schmidt ~ Tue : 03:30 PM-05:30 PM|Employment Law Clinic
+20259|90217|01|CLN|C|0/0|Zunkel ~ Tue : 03:30 PM-05:30 PM|Criminal and Juvenile Justice Clinic
+20263|90219|01|CLN|C|0/0|Konsky, Strauss ~ Tue : 01:30 PM-03:15 PM|Jenner & Block Supreme Court and Appellate Clinic
+20260|90220|01|CLN|C|0/0|Ainsworth, Leonard, Myerscough-Mueller ~ Tue : 04:00 PM-06:00 PM|Exoneration Project Clinic
+20261|90221|01|CLN|C|0/0|Miller, Siegler ~ Tue : 04:00 PM-06:00 PM|Federal Criminal Justice Clinic
+20202|90222|01|CLN|C|0/0|Tarsney ~ Tue : 09:45 AM-11:45 AM|Innovation Clinic
+20262|90223|01|CLN|C|0/0|Gryczan, Kregor ~ Tue : 09:45 AM-11:45 AM|Institute for Justice Clinic on Entrepreneurship
+20277|90224|01|CLN|C|0/0|Miskho, Sperry, Templeton ~ Tue : 03:30 PM-05:30 PM|Abrams Environmental Law Clinic
+20269|90225|01|CLN|C|0/0|Parrin, Radhakrishnan ~ Tue : 09:45 AM-11:45 AM|Global Human Rights Clinic
+20288|90226|01|CLN|C|0/0|Leslie ~ Tue : 08:30 AM-09:35 AM|Housing Initiative Transactional Clinic
+20200|90913|01|CLN|C|0/0|Futterman ~ Thu : 04:00 PM-06:00 PM|Civil Rights Clinic: Police Accountability
+20203|91201|01|CLN|O|7/16|Armour, Noller ~ Mon : 04:00 PM-06:00 PM|Prosecution and Defense Clinic
+20201|91301|01|CLN|C|0/0|Brooks ~ Mon : 04:00 PM-06:00 PM|Poverty and Housing Law Clinic
+20198|91562|01|CLN|C|0/0|Avratin, Kramer, Zarfes ~ Tue : 04:00 PM-06:00 PM|Kirkland & Ellis Corporate Lab Clinic
+20199|91562|02|CLN|C|0/0|Avratin, Kramer, Zarfes ~ Thu : 04:00 PM-06:00 PM|Kirkland & Ellis Corporate Lab Clinic
+20322|92000|02|SEM|C|0/0|Masur, Mcadams ~ Thu : 07:30 PM-09:30 PM   &   Thu : 07:30 PM-09:30 PM|Greenberg Seminars: Crime and Politics in Charm City
+20323|92000|03|SEM|C|0/0|Huq, Lakier|Greenberg Seminars: Liberalisms
+20324|92000|04|SEM|C|0/0|Miskho, Radhakrishnan ~ Wed : 07:30 PM-09:30 PM   &   Wed : 07:30 PM-09:30 PM   &   Wed : 07:30 PM-09:30 PM|Greenberg Seminars: Managing Catastrophe in the Decade Ahead: Lessons from Climate and Health
+20325|92000|05|SEM|C|0/0|Birdthistle, LaCroix ~ Mon : 07:00 PM-09:00 PM   &   Mon : 07:00 PM-09:00 PM|Greenberg Seminars: National Treasures: Constitutions & Charters for Countries & Companies
+20326|92000|06|SEM|C|0/0|Fahey, Strahilevitz|Greenberg Seminars:  Rules and Standards in Sports
+20327|92000|07|SEM|C|0/0|Konsky, Kregor ~ Wed : 07:00 PM-09:00 PM   &   Wed : 07:00 PM-09:00 PM|Greenberg Seminars: The Bear: Business, Success, and Beef in Chicago
+20328|92000|08|SEM|C|0/0|Msall, Robertson ~ Thu : 07:00 PM-09:00 PM   &   Thu : 07:00 PM-09:00 PM   &   Thu : 07:00 PM-09:00 PM|Greenberg Seminars: The Mayors and the Machine
+20271|92001|01|SEM|C|0/0|Buss, Fairley, Hallett, Huq, Miller, Nou ~ Thu : 06:10 PM-08:10 PM   &   Thu : 06:10 PM-08:10 PM|Public Interest Leadership Program Seminar
+20310|95040|01|SEM|C|0/0|Hitik ~ Wed : 04:00 PM-06:00 PM|Philip C. Jessup International Law Moot Court Competition
+25260|97125|01|CRS|O|0/9|Total Enrollment: 0/18 ~ Kashyap ~ Thu : 01:30 PM-04:30 PM|The Analytics of Money Laundering
