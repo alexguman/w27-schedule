@@ -566,7 +566,7 @@ function courseChip(c, { override = false, via = null } = {}) {
 
 function unitsOfRows(rows) {
   const by = { other: 0, scheduled: 0, contemplated: 0 };
-  for (const r of rows) if (r.course) by[r.course.source] += r.units;
+  for (const r of rows) if (r.course && !r.surplus) by[r.course.source] += r.units;
   return by;
 }
 
@@ -576,6 +576,7 @@ function rowsTable(rows) {
     const head = r.group && r.group !== group ? `<tr class="grprow"><td colspan="2">${esc(group = r.group)}</td></tr>` : "";
     const cell = r.course
       ? courseChip(r.course, r) + (r.filled ? "" : `<div class="soft">${fmtU(r.units)} of ${fmtU(REQ.defaultUnits)} units: pair it with another course from this line</div>`)
+        + (r.surplus ? `<div class="req-note">Extra line: only ${REQ.degree[r.section].choose} are needed, so this course's units count as electives.</div>` : "")
       : `<span class="muted">No course yet</span>`;
     return `${head}<tr data-row="${esc(r.id)}"><td>${esc(r.label)}</td><td>${cell}${r.note ? `<div class="req-note">${esc(r.note)}</div>` : ""}</td></tr>`;
   }).join("")}</tbody></table>`;
@@ -596,7 +597,7 @@ function renderRequirements(ev) {
     <h3 class="req-sub">Foundations ${statusChip(ev.foundations.filled >= ev.foundations.choose, ev.foundations.filled, `${ev.foundations.choose} lines`)}</h3>
     ${progressBar(unitsOfRows(found), d.foundations.units, "Foundations")}
     ${rowsTable(found)}
-    <h3 class="req-sub">${esc(d.flmbe.label)} (FLMBE) ${statusChip(ev.flmbe.filled >= ev.flmbe.choose, ev.flmbe.filled, `${ev.flmbe.choose} of ${ev.flmbe.total} lines`)}</h3>
+    <h3 class="req-sub">${esc(d.flmbe.label)} (FLMBE) ${statusChip(ev.flmbe.filled >= ev.flmbe.choose, ev.flmbe.filled, `${ev.flmbe.choose} lines (any ${ev.flmbe.choose} of ${ev.flmbe.total})`)}</h3>
     ${progressBar(unitsOfRows(flmbe), d.flmbe.units, "FLMBE")}
     ${rowsTable(flmbe)}
     <p class="req-note">${esc(d.distinct_credit_rule)}</p>

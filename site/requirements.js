@@ -163,8 +163,11 @@
      * each is placed by an augmenting path, so the result fills the most rows and, among those, prefers
      * stronger sources (greedy on a transversal matroid).
      *
-     * Returns {rows: [{id, target, section, group, label, note, course, override, via, units, filled}],
-     *          used: Set of uids placed in a row}.
+     * A section needs only `choose` lines (FLMBE: 7 of 8). When more are filled, the extra lines holding the
+     * weakest-source courses are marked surplus: they still show as filled, but their units count as electives.
+     *
+     * Returns {rows: [{id, target, section, group, label, note, course, override, via, units, filled, surplus}],
+     *          used: Set of uids whose units count toward Foundations or FLMBE (surplus lines excluded)}.
      */
     function assignDegreeRows(courses, overrides) {
       const holder = new Array(degreeRows.length).fill(null);
@@ -183,9 +186,16 @@
         const e = c ? eligibility(c.num, r.target, overrides) : { override: false, via: null };
         const units = c ? Math.min(c.units, defaultUnits) : 0;
         return { id: r.id, target: r.target, section: r.section, group: r.group || null, label: r.label, note: r.note || null,
-                 course: c, override: e.override, via: e.via, units, filled: units >= defaultUnits };
+                 course: c, override: e.override, via: e.via, units, filled: units >= defaultUnits, surplus: false };
       });
-      return { rows, used: new Set(holder.filter(Boolean).map(c => c.uid)) };
+      for (const section of ["foundations", "flmbe"]) {
+        const filled = rows.filter(r => r.section === section && r.filled);
+        const extra = filled.length - data.degree[section].choose;
+        // Weakest source first; among equals, the later line.
+        filled.sort((a, b) => SOURCE_RANK[b.course.source] - SOURCE_RANK[a.course.source] || rows.indexOf(b) - rows.indexOf(a));
+        for (const r of filled.slice(0, Math.max(0, extra))) r.surplus = true;
+      }
+      return { rows, used: new Set(rows.filter(r => r.course && !r.surplus).map(r => r.course.uid)) };
     }
 
     // ---------- concentrations ----------
@@ -327,7 +337,7 @@
      *   input.overrides: [{num, kind, target}].
      *   input.tracked: concentration ids to evaluate (any number).
      * Returns:
-     *   {program, rows, foundations: {filled, choose, total}, flmbe: {filled, choose, total},
+     *   {program, rows, foundations: {filled, choose, total}, flmbe: {filled, choose, total}, rowUnits,
      *    electives: {units, bySource}, total: {units, target, bySource}, concentrations: [...],
      *    usage: Map uid -> [{target, label, override, via}]}.
      *   Concentrations are in requirements-file order and carry blockedBy (unmet `requires`), caps (overlap
@@ -343,7 +353,7 @@
         return { filled: list.filter(r => r.filled).length, choose: data.degree[section].choose, total: list.length };
       };
       const electiveCourses = courses.filter(c => !used.has(c.uid));
-      const rowCourses = rows.filter(r => r.course).map(r => r.course);
+      const rowCourses = rows.filter(r => r.course && !r.surplus).map(r => r.course);
 
       // Concentrations named in `requires` are evaluated even when not tracked, to decide blockedBy.
       const tracked = data.concentrations.filter(c => (input.tracked || []).includes(c.id));
@@ -367,7 +377,11 @@
       });
 
       const usage = new Map(courses.map(c => [c.uid, []]));
-      for (const r of rows) if (r.course) usage.get(r.course.uid).push({ target: r.target, label: targets.get(r.target).label, override: r.override, via: r.via });
+      for (const r of rows) {
+        if (!r.course) continue;
+        const label = targets.get(r.target).label + (r.surplus ? " (extra line: units count as electives)" : "");
+        usage.get(r.course.uid).push({ target: r.target, label, override: r.override, via: r.via });
+      }
       for (const e of concentrations) {
         for (const k of e.components) for (const x of k.entries) {
           const label = targets.has(x.target) && x.target.startsWith("conc:") ? targets.get(x.target).label : `${e.label}: ${k.label}`;

@@ -53,6 +53,17 @@ test("seven of eight FLMBE rows completes FLMBE; Foundations needs all three", (
   assert.equal(r.total.target, 2000);
 });
 
+test("an eighth FLMBE line is extra: its weakest course counts as an elective", () => {
+  const list = [...courses(["35000", "37000", "40000", "42001", "30005", "38001", "33050"]), ...courses(["33305"], "contemplated")];
+  const r = engine.evaluate({ program: "mba", courses: list });
+  assert.equal(r.flmbe.filled, 8);
+  assert.equal(row(r, "society").surplus, true);
+  assert.equal(r.rows.filter(x => x.surplus).length, 1);
+  assert.equal(r.electives.units, 100);
+  assert.deepEqual(r.electives.bySource, { other: 0, scheduled: 0, contemplated: 100 });
+  assert.deepEqual(r.rowUnits, { other: 700, scheduled: 0, contemplated: 0 });
+});
+
 test("degree rows prefer completed courses over Winter what-ifs", () => {
   const list = [...courses(["35000"], "contemplated"), ...courses(["35200"], "scheduled"), ...courses(["35001"], "other")];
   const r = engine.evaluate({ program: "jdmba", courses: list });
