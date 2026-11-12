@@ -8,9 +8,12 @@
  * Terms used throughout:
  *   course number  Normalized string: Booth courses are bare five-digit numbers ("35100"); other departments
  *                  keep their prefix ("ECON 30100", "LAWS 48230"). See normalizeNumber().
- *   course         {uid, num, units, source, ...}: one course the visitor took or may take. uid is unique.
- *   source         "other" (other quarters), "scheduled" (Winter, on the schedule) or "contemplated"
- *                  (Winter, contemplated). Stronger sources are listed first in SOURCES.
+ *   course         {uid, num, units, source, order?, ...}: one course the visitor took or may take. uid is
+ *                  unique. order (optional) sorts quarters: a smaller number is an earlier quarter.
+ *   source         "other" (Other quarters entries), "scheduled" (a pick on a quarter's schedule) or
+ *                  "contemplated" (a contemplated pick). Stronger sources are listed first in SOURCES.
+ *   duplicate      A course whose number (after cross-listing) matches another course's. Each course number
+ *                  counts once: see dedupeCourses().
  *   target         A requirement a course can be assigned to: "foundations:<row>", "flmbe:<row>" or
  *                  "conc:<concentration>:<component>".
  *   override       {num, kind: "add" | "remove", target}: the visitor's petition or exception for one course
@@ -59,6 +62,35 @@
     return courses.map((c, i) => [c, i])
       .sort((a, b) => SOURCE_RANK[a[0].source] - SOURCE_RANK[b[0].source] || a[1] - b[1])
       .map(([c]) => c);
+  }
+
+  /**
+   * Keeps one course per course number, so a course listed in several places counts once.
+   *
+   * Courses match when their numbers are equal after mapping cross-listed numbers to what they count as
+   * (LAWS 48230 matches 38120). The kept course is the one with the strongest source, then the smallest
+   * `order` (earliest quarter; courses without order sort last), then the first in input order.
+   *
+   * Args:
+   *   courses: [{uid, num, units, source, order?}].
+   *   crosslists: the requirements file's crosslists: [{course, counts_as}].
+   * Returns:
+   *   {kept: courses in input order, duplicates: Map uid of each dropped course -> the kept course}.
+   */
+  function dedupeCourses(courses, crosslists) {
+    const alias = new Map(crosslists.map(x => [x.course, x.counts_as]));
+    const keyOf = c => alias.get(c.num) || c.num;
+    const rank = (c, i) => [SOURCE_RANK[c.source], c.order ?? Infinity, i];
+    // True when rank a sorts before rank b (lexicographic).
+    const before = (a, b) => { for (let j = 0; j < a.length; j++) if (a[j] !== b[j]) return a[j] < b[j]; return false; };
+    const best = new Map();
+    courses.forEach((c, i) => {
+      const k = keyOf(c), cur = best.get(k), r = rank(c, i);
+      if (!cur || before(r, cur.r)) best.set(k, { c, r });
+    });
+    const keptIds = new Set([...best.values()].map(b => b.c.uid));
+    const duplicates = new Map(courses.filter(c => !keptIds.has(c.uid)).map(c => [c.uid, best.get(keyOf(c)).c]));
+    return { kept: courses.filter(c => keptIds.has(c.uid)), duplicates };
   }
 
   /**
@@ -333,18 +365,20 @@
      *
      * Args:
      *   input.program: a program id ("mba" or "jdmba").
-     *   input.courses: [{uid, num, units, source, ...}]; extra fields are passed through untouched.
+     *   input.courses: [{uid, num, units, source, order?, ...}]; extra fields are passed through untouched.
+     *     Duplicates (see dedupeCourses) are dropped before anything is counted.
      *   input.overrides: [{num, kind, target}].
      *   input.tracked: concentration ids to evaluate (any number).
      * Returns:
      *   {program, rows, foundations: {filled, choose, total}, flmbe: {filled, choose, total}, rowUnits,
      *    electives: {units, bySource}, total: {units, target, bySource}, concentrations: [...],
-     *    usage: Map uid -> [{target, label, override, via}]}.
+     *    usage: Map uid -> [{target, label, override, via}] (empty for duplicates),
+     *    duplicates: Map uid of each dropped duplicate -> the course counted instead}.
      *   Concentrations are in requirements-file order and carry blockedBy (unmet `requires`), caps (overlap
      *   caps applied), notes, ruleMessages and done.
      */
     function evaluate(input) {
-      const courses = input.courses;
+      const { kept: courses, duplicates } = dedupeCourses(input.courses, data.crosslists);
       const overrides = input.overrides || [];
       const program = data.programs.find(p => p.id === input.program) || data.programs[0];
       const { rows, used } = assignDegreeRows(courses, overrides);
@@ -376,7 +410,7 @@
         return { ...e, blockedBy, caps: capsApplied.get(c.id) || [], done: isDone(e) && blockedBy.length === 0 };
       });
 
-      const usage = new Map(courses.map(c => [c.uid, []]));
+      const usage = new Map(input.courses.map(c => [c.uid, []]));
       for (const r of rows) {
         if (!r.course) continue;
         const label = targets.get(r.target).label + (r.surplus ? " (extra line: units count as electives)" : "");
@@ -394,7 +428,7 @@
         rowUnits: unitsBySource(rowCourses),
         electives: { units: electiveCourses.reduce((s, c) => s + c.units, 0), bySource: unitsBySource(electiveCourses) },
         total: { units: courses.reduce((s, c) => s + c.units, 0), target: program.total_units, bySource: unitsBySource(courses) },
-        concentrations, usage,
+        concentrations, usage, duplicates,
       };
     }
 
@@ -465,5 +499,5 @@
     };
   }
 
-  return { SOURCES, STATUSES, normalizeNumber, unitsBySource, createEngine };
+  return { SOURCES, STATUSES, normalizeNumber, unitsBySource, dedupeCourses, createEngine };
 });

@@ -1,10 +1,12 @@
 /**
- * Winter 2027 Schedule Builder: weekly calendar for picking Booth (BUSN) and Law School (LAWS) sections.
+ * Booth Course Schedule Builder: weekly calendars for picking Booth (BUSN) and Law School (LAWS) sections in each
+ * quarter of 2026-27, with Booth degree-requirement tracking across quarters.
  *
  * Inputs: window.W27_SECTIONS, window.W27_DETAILS and window.W27_REQUIREMENTS, set by data.js (built by
  * scripts/build.py), and window.W27Req from requirements.js (the degree-requirement engine).
  * Side effects: renders into the elements of index.html; keeps the viewer's selection in localStorage
- * under "booth-w27-schedule" and "w27-show-contemplated", and requirement tracking under "w27-requirements".
+ * under "booth-w27-schedule" and "w27-show-contemplated", requirement tracking under "w27-requirements", and the
+ * last viewed quarter under "w27-term". The theme ("w27-theme") is applied by the inline script in index.html.
  */
 "use strict";
 
@@ -13,9 +15,11 @@
  *  faculty loaders; Law data from UC Classes Self-Service class details and Law School faculty pages. */
 const DETAILS = window.W27_DETAILS;
 
-/** Winter 2027 section records: Booth (dept BUSN) from the Booth course-search export,
- *  Law School (dept LAWS) from UC Classes Self-Service.
- *  meets: d = day index (0 = Monday), s/e = start/end in minutes after midnight. Empty meets = no time listed. */
+/** Section records for 2026-27: Booth (dept BUSN, Autumn to Spring) from the Booth course-search export,
+ *  Law School (dept LAWS, Winter 2027 only) from UC Classes Self-Service. Section ids are unique across the year.
+ *  term: "Autumn 2026" etc. meets: d = day index (0 = Monday), s/e = start/end in minutes after midnight; empty
+ *  meets = no time listed, and note says why ("Time TBD"). units: 50 or 100; half: for 50-unit courses, "first",
+ *  "second" or "all" (full quarter), else null. tags: Booth's own requirement tags, reference only (not counted). */
 const SECTIONS = window.W27_SECTIONS;
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -26,14 +30,35 @@ const STORE_KEY = "booth-w27-schedule";
 
 const SCHOOLS = { BUSN: "Booth", LAWS: "Law" };
 
-/** Courses keyed by an ASCII course key (course.code, e.g. "BUSN30000"); sections sorted by first
- *  meeting from Monday 8 AM. Sections that share a number but not a title (the Law School's
- *  Greenberg Seminars, LAWS 92000) are separate courses with keys like "LAWS92000.2". */
+/** Calendar position of a season within its year, for ordering quarters ("Autumn 2026" before "Winter 2027"). */
+const SEASON_ORDER = { Winter: 0, Spring: 1, Summer: 2, Autumn: 3 };
+
+/** Sort number for a quarter name: smaller is earlier. */
+function termOrder(term) {
+  const [season, year] = term.split(" ");
+  return Number(year) * 4 + (SEASON_ORDER[season] ?? 0);
+}
+
+/** Quarters in the data, in calendar order. */
+const TERMS = [...new Set(SECTIONS.map(s => s.term))].sort((a, b) => termOrder(a) - termOrder(b));
+const DEFAULT_TERM = TERMS.includes("Winter 2027") ? "Winter 2027" : TERMS[0];
+/** Quarters that list Law School courses, for the Law filter's empty-quarter message. */
+const LAW_TERMS = TERMS.filter(t => SECTIONS.some(s => s.term === t && s.dept === "LAWS"));
+
+/** Short ASCII prefix for a quarter in course keys: "Autumn 2026" -> "Au26". */
+function termKey(term) {
+  return term.slice(0, 2) + term.slice(-2);
+}
+
+/** Courses keyed by an ASCII course key (course.code): quarter prefix plus dept and number, e.g. "Wi27-BUSN30000",
+ *  because course numbers repeat across quarters. Sections are sorted by first meeting from Monday 8 AM. Sections
+ *  that share a quarter and number but not a title (the Law School's Greenberg Seminars, LAWS 92000) are separate
+ *  courses with keys like "Wi27-LAWS92000.2". num is the normalized course number shared across quarters. */
 const COURSES = new Map();
 {
   const titlesByNumber = new Map();
   for (const sec of SECTIONS) {
-    const num = sec.dept + sec.code;
+    const num = `${termKey(sec.term)}-${sec.dept}${sec.code}`;
     if (!titlesByNumber.has(num)) titlesByNumber.set(num, []);
     const titles = titlesByNumber.get(num);
     if (!titles.includes(sec.name)) titles.push(sec.name);
@@ -41,7 +66,8 @@ const COURSES = new Map();
     sec.key = i ? `${num}.${i}` : num;
     sec.first = sec.meets.length ? Math.min(...sec.meets.map(m => m.d * 1440 + m.s)) : Infinity;
     if (!COURSES.has(sec.key)) {
-      COURSES.set(sec.key, { code: sec.key, dept: sec.dept, label: `${sec.dept} ${sec.code}`, name: sec.name, sections: [] });
+      const label = `${sec.dept} ${sec.code}`;
+      COURSES.set(sec.key, { code: sec.key, dept: sec.dept, term: sec.term, label, num: W27Req.normalizeNumber(label), name: sec.name, sections: [] });
     }
     COURSES.get(sec.key).sections.push(sec);
   }
@@ -52,17 +78,41 @@ for (const c of COURSES.values()) {
            ...c.sections.map(s => `${c.label}-${s.sec} ${s.fac}`)].join(" ").toLowerCase();
 }
 const SECTION_BY_ID = new Map(SECTIONS.map(s => [s.id, s]));
-const COURSE_LIST = [...COURSES.values()].sort((a, b) => a.dept.localeCompare(b.dept) || a.label.localeCompare(b.label) || a.code.localeCompare(b.code));
+const COURSE_LIST = [...COURSES.values()].sort((a, b) => termOrder(a.term) - termOrder(b.term) || a.dept.localeCompare(b.dept) || a.label.localeCompare(b.label) || a.code.localeCompare(b.code));
 
-/** App state. selected: ordered list of {code, id, hue, status}; status is "planned" (on the schedule) or
- *  "contemplated" (under consideration). focus: course code in highlight mode, or null.
+/** App state. selected: ordered list of {code, id, hue, status} across all quarters; status is "planned" (on the
+ *  schedule) or "contemplated" (under consideration). term: the quarter shown; the calendar, search list, Selected
+ *  list, conflicts and highlight mode show only its courses. focus: course code in highlight mode, or null.
  *  view: "calendar" or "requirements" (the main tab). fills: a REQ.filterOptions id that limits the search
  *  list to courses filling that requirement, or "" for no limit. */
-const state = { selected: [], focus: null, query: "", school: "ALL", showContemplated: true, view: "calendar", fills: "" };
+const state = { selected: [], term: DEFAULT_TERM, focus: null, query: "", school: "ALL", showContemplated: true, view: "calendar", fills: "" };
 const SHOW_KEY = "w27-show-contemplated";
+const TERM_KEY = "w27-term";
 
 function isContemplated(p) {
   return p.status === "contemplated";
+}
+
+/** Selected courses in the quarter being shown. */
+function termPicks() {
+  return state.selected.filter(p => COURSES.get(p.code).term === state.term);
+}
+
+/** Other quarters in which a course with the same number as `course` is selected, in calendar order. */
+function alsoIn(course) {
+  return TERMS.filter(t => t !== course.term &&
+    state.selected.some(p => { const c = COURSES.get(p.code); return c.term === t && c.num === course.num; }));
+}
+
+/** False for a first-half and a second-half 50-unit course: they meet in different weeks, so they cannot clash. */
+function halvesOverlap(a, b) {
+  return !((a.half === "first" && b.half === "second") || (a.half === "second" && b.half === "first"));
+}
+
+/** "50 units, first half", "50 units, second half" or "50 units, full quarter"; "" for 100-unit courses. */
+function unitsLabel(sec) {
+  if (sec.units !== 50) return "";
+  return `50 units, ${{ first: "first half", second: "second half" }[sec.half] || "full quarter"}`;
 }
 
 // ---------- scheduling logic ----------
@@ -72,11 +122,14 @@ function meetsOverlap(a, b) {
   return a.d === b.d && a.s < b.e && b.s < a.e;
 }
 
-/** True when section `sec` overlaps a selected section other than course `skipCode`'s.
- *  With plannedOnly, contemplated courses are ignored. */
+/** True when section `sec` overlaps a selected section of its quarter other than course `skipCode`'s.
+ *  With plannedOnly, contemplated courses are ignored. First- and second-half courses never overlap. */
 function clashesWithPlaced(sec, skipCode, plannedOnly = false) {
-  return state.selected.some(p => p.code !== skipCode && !(plannedOnly && isContemplated(p)) &&
-    SECTION_BY_ID.get(p.id).meets.some(pm => sec.meets.some(m => meetsOverlap(m, pm))));
+  return state.selected.some(p => {
+    const other = SECTION_BY_ID.get(p.id);
+    return p.code !== skipCode && other.term === sec.term && !(plannedOnly && isContemplated(p)) && halvesOverlap(sec, other) &&
+      other.meets.some(pm => sec.meets.some(m => meetsOverlap(m, pm)));
+  });
 }
 
 /** Returns the earliest section (from Monday 8 AM) that clashes with nothing selected; else the earliest that
@@ -87,16 +140,18 @@ function pickDefaultSection(course) {
     || course.sections[0];
 }
 
-function nextHue() {
-  const used = new Set(state.selected.map(p => p.hue));
-  return HUES.find(h => !used.has(h)) ?? HUES[state.selected.length % HUES.length];
+/** A color not yet used in `term` (colors only need to differ within one quarter's calendar). */
+function nextHue(term = state.term) {
+  const picks = state.selected.filter(p => COURSES.get(p.code).term === term);
+  const used = new Set(picks.map(p => p.hue));
+  return HUES.find(h => !used.has(h)) ?? HUES[picks.length % HUES.length];
 }
 
 /** Adds a course with its default section. status: "planned" (default) or "contemplated". */
 function addCourse(code, status = "planned") {
   if (state.selected.some(p => p.code === code)) return;
   const course = COURSES.get(code);
-  state.selected.push({ code, id: pickDefaultSection(course).id, hue: nextHue(), status });
+  state.selected.push({ code, id: pickDefaultSection(course).id, hue: nextHue(course.term), status });
   commit();
 }
 
@@ -136,12 +191,26 @@ function save() {
 function load() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_KEY) || "[]");
-    // Saves from the Booth-only version keyed courses by bare number; re-key them by section id.
-    // Saves from before contemplated courses existed have no status: they were on the schedule.
+    // Earlier saves keyed courses by bare number ("30000") or dept plus number ("BUSN30000"); re-key every save by
+    // its section id, which also puts it in the right quarter. Saves from before contemplated courses existed have
+    // no status: they were on the schedule.
     state.selected = raw.filter(p => SECTION_BY_ID.has(p.id))
       .map(p => ({ ...p, code: SECTION_BY_ID.get(p.id).key, status: p.status === "contemplated" ? "contemplated" : "planned" }));
     state.showContemplated = localStorage.getItem(SHOW_KEY) !== "0";
   } catch (e) { state.selected = []; }
+  try {
+    const term = localStorage.getItem(TERM_KEY);
+    if (TERMS.includes(term)) state.term = term;
+  } catch (e) { /* storage unavailable: keep the default quarter */ }
+}
+
+/** Shows quarter `term` and remembers it for the next visit. */
+function setTerm(term) {
+  if (!TERMS.includes(term) || term === state.term) return;
+  state.term = term;
+  state.focus = null;
+  try { localStorage.setItem(TERM_KEY, term); } catch (e) { /* storage unavailable */ }
+  render();
 }
 
 function commit() { save(); render(); }
@@ -160,32 +229,27 @@ let req = REQ.defaultState();
 /** Result of the last REQ.evaluate(); render() refreshes it. The course pop-up reads its usage map. */
 let lastEval = null;
 
-/** Normalized course number of a Winter course: "30000" for BUSN 30000, "LAWS 48230" for Law. */
-function winterNum(c) {
-  return W27Req.normalizeNumber(c.label);
+/** First course in the data for each normalized number, used to fill in titles typed into Other quarters. */
+const COURSE_BY_NUM = new Map();
+for (const c of COURSE_LIST) if (c.num && !COURSE_BY_NUM.has(c.num)) COURSE_BY_NUM.set(c.num, c);
+
+/** Booth units a section earns: its own units (50 or 100) for Booth; for Law, the default (100) only when the
+ *  requirements cross-list or list the course, or an override adds it, else 0 (Law hours are not Booth units). */
+function sectionUnits(sec) {
+  if (sec.dept === "BUSN") return sec.units ?? REQ.defaultUnits;
+  return REQ.isBoothCredit(W27Req.normalizeNumber(`${sec.dept} ${sec.code}`), req.overrides) ? REQ.defaultUnits : 0;
 }
 
-/** First Winter course for each normalized number, used to fill in titles typed into Other quarters. */
-const WINTER_BY_NUM = new Map();
-for (const c of COURSE_LIST) {
-  const n = winterNum(c);
-  if (n && !WINTER_BY_NUM.has(n)) WINTER_BY_NUM.set(n, c);
-}
-
-/** Booth units a Winter course earns: the default (100) for Booth courses; for Law courses, the default only when
- *  the requirements cross-list or list the course, or an override adds it, else 0. */
-function winterUnits(c) {
-  return c.dept === "BUSN" || REQ.isBoothCredit(winterNum(c), req.overrides) ? REQ.defaultUnits : 0;
-}
-
-/** Courses the engine assigns: other-quarter courses (uid "o:<id>") and selected Winter courses (uid "w:<code>"). */
+/** Courses the engine assigns: Other quarters entries (uid "o:<id>") and selected courses from every quarter
+ *  (uid "p:<course code>", with term and order so the engine keeps the earliest quarter's copy of a duplicate). */
 function reqCourses() {
   const other = req.other.map(o => ({ uid: `o:${o.id}`, num: o.num, units: o.units, source: "other", title: o.title, quarter: o.quarter, status: o.status }));
-  const winter = state.selected.map(p => {
+  const picks = state.selected.map(p => {
     const c = COURSES.get(p.code);
-    return { uid: `w:${p.code}`, num: winterNum(c), units: winterUnits(c), source: isContemplated(p) ? "contemplated" : "scheduled", title: c.name, winterCode: p.code };
+    return { uid: `p:${p.code}`, num: c.num, units: sectionUnits(SECTION_BY_ID.get(p.id)), source: isContemplated(p) ? "contemplated" : "scheduled",
+             title: c.name, term: c.term, order: termOrder(c.term), pickCode: p.code };
   });
-  return [...other, ...winter];
+  return [...other, ...picks];
 }
 
 function saveReq() {
@@ -233,7 +297,7 @@ function exportState() {
 /**
  * Parses and validates backup text from exportState().
  * Returns {ok: true, selected, showContemplated, requirements, skipped} or {ok: false, error}. Sections that no
- * longer exist in the Winter data are skipped and counted, not treated as errors.
+ * longer exist in the course data are skipped and counted, not treated as errors.
  */
 function parseBackup(text) {
   let obj;
@@ -271,9 +335,10 @@ function fmtRange(m) {
   return `${fmtClock(m.s, !sameHalf)}–${fmtClock(m.e)}`;
 }
 
-/** Groups meetings that share a time range: "Tue/Thu 9:30–10:50 AM". */
+/** Groups meetings that share a time range: "Tue/Thu 9:30–10:50 AM". For a section with no meetings, its note
+ *  ("Time TBD", "Day not listed: ...") or "No meeting time listed". Plain text: escape it before inserting as HTML. */
 function fmtMeets(sec) {
-  if (!sec.meets.length) return "No meeting time listed";
+  if (!sec.meets.length) return sec.note || "No meeting time listed";
   const groups = new Map();
   for (const m of sec.meets) {
     const k = fmtRange(m);
@@ -322,7 +387,7 @@ function pos(m, lane, lanes) {
 function renderCalendar() {
   const placed = Array.from({ length: 7 }, () => []);
   const ghosts = Array.from({ length: 7 }, () => []);
-  for (const p of state.selected) {
+  for (const p of termPicks()) {
     // Hidden contemplated courses still show while highlighted, so their sections stay reachable.
     if (isContemplated(p) && !state.showContemplated && state.focus !== p.code) continue;
     const course = COURSES.get(p.code);
@@ -351,7 +416,7 @@ function renderCalendar() {
     for (let i = 0; i < dayPlaced.length; i++) {
       for (let j = i + 1; j < dayPlaced.length; j++) {
         const a = dayPlaced[i].m, b = dayPlaced[j].m;
-        if (!meetsOverlap(a, b)) continue;
+        if (!meetsOverlap(a, b) || !halvesOverlap(dayPlaced[i].sec, dayPlaced[j].sec)) continue;
         const ma = isContemplated(dayPlaced[i].p), mb = isContemplated(dayPlaced[j].p);
         if (ma !== mb) { (ma ? dayPlaced[i] : dayPlaced[j]).warn = true; continue; }
         if (!ma) {
@@ -404,10 +469,16 @@ function renderCalendar() {
 
 function renderResults() {
   const tokens = state.query.toLowerCase().split(/\s+/).filter(Boolean);
-  const hits = COURSE_LIST.filter(c => (state.school === "ALL" || c.dept === state.school) && tokens.every(t => c.hay.includes(t))
-    && (!state.fills || REQ.fills(winterNum(c), req.overrides, state.fills)));
+  const inTerm = COURSE_LIST.filter(c => c.term === state.term);
+  const hits = inTerm.filter(c => (state.school === "ALL" || c.dept === state.school) && tokens.every(t => c.hay.includes(t))
+    && (!state.fills || REQ.fills(c.num, req.overrides, state.fills)));
   const chosen = new Map(state.selected.map(p => [p.code, p.status]));
-  document.getElementById("rescount").textContent = `${hits.length} of ${COURSE_LIST.length}`;
+  document.getElementById("rescount").textContent = `${hits.length} of ${inTerm.length}`;
+  if (state.school === "LAWS" && !LAW_TERMS.includes(state.term)) {
+    document.querySelectorAll("#schools button").forEach(b => b.setAttribute("aria-pressed", b.dataset.school === state.school));
+    document.getElementById("results").innerHTML = `<li class="empty" style="padding:8px 4px">Law School courses are listed for ${esc(LAW_TERMS.join(", "))} only.</li>`;
+    return;
+  }
   document.querySelectorAll("#schools button").forEach(b => b.setAttribute("aria-pressed", b.dataset.school === state.school));
   document.getElementById("results").innerHTML = hits.length ? hits.map(c => {
     const on = chosen.has(c.code), maybe = chosen.get(c.code) === "contemplated";
@@ -416,7 +487,7 @@ function renderResults() {
     return `<li><button class="res" type="button" aria-pressed="${on}" data-code="${c.code}">
       <span class="box${maybe ? " maybe" : ""}" title="${maybe ? "Contemplated" : on ? "On schedule" : ""}">${maybe ? "?" : on ? "✓" : ""}</span>
       <span><span class="code">${c.label}</span><span class="t">${esc(c.name)}</span>
-      <span class="sub">${n} section${n > 1 ? "s" : ""}${progs ? " · " + esc(progs) : ""}</span>${reqChips(c)}</span>
+      <span class="sub">${n} section${n > 1 ? "s" : ""}${progs ? " · " + esc(progs) : ""}${courseUnitsText(c)}${noMeetingText(c)}</span>${alsoInNote(c)}${reqChips(c)}</span>
     </button><button class="info" type="button" data-info="${c.code}" aria-label="Details for ${c.label} ${esc(c.name)}">Details</button></li>`;
   }).join("") : `<li class="empty" style="padding:8px 4px">No course matches${state.query ? ` “${esc(state.query)}”` : ""}${state.fills ? " with this Fills filter" : ""}. Try a course number or part of the title.</li>`;
 }
@@ -424,9 +495,27 @@ function renderResults() {
 /** Up to this many requirement chips show under a search result; the rest are summarized as "+N". */
 const MAX_RESULT_CHIPS = 3;
 
-/** Small chips naming the requirements a Winter course can count toward (overrides included). */
+/** " · 50 units, first half" for a 50-unit course (each distinct label once); "" otherwise. */
+function courseUnitsText(c) {
+  const labels = [...new Set(c.sections.map(unitsLabel).filter(Boolean))];
+  return labels.length ? " · " + esc(labels.join("; ")) : "";
+}
+
+/** " · Time TBD" (or another no-meeting note) for sections with no meetings, each distinct note once; "" if none. */
+function noMeetingText(c) {
+  const notes = [...new Set(c.sections.filter(s => !s.meets.length).map(fmtMeets))];
+  return notes.length ? " · " + esc(notes.join("; ")) : "";
+}
+
+/** Small warning when the same course number is selected in another quarter. */
+function alsoInNote(c) {
+  const terms = alsoIn(c);
+  return terms.length ? `<span class="soft also">Also in ${esc(terms.join(", "))}</span>` : "";
+}
+
+/** Small chips naming the requirements a course can count toward (overrides included). */
 function reqChips(c) {
-  const list = REQ.eligibleTargets(winterNum(c), req.overrides);
+  const list = REQ.eligibleTargets(c.num, req.overrides);
   if (!list.length) return "";
   const shown = list.slice(0, MAX_RESULT_CHIPS).map(t =>
     `<span class="rq${t.override ? " ovr" : ""}" title="${esc(t.label + (t.override ? " (override)" : "") + (t.via ? ` (as ${t.via})` : ""))}">${esc(t.label)}</span>`);
@@ -438,8 +527,9 @@ function renderSelected(result) {
   const conflictCodes = new Set(result.conflicts.map(it => it.p.code));
   const warnCodes = new Set(result.warns.map(it => it.p.code));
   const list = document.getElementById("selected");
-  document.getElementById("selcount").textContent = state.selected.length || "";
-  if (!state.selected.length) { list.innerHTML = `<li class="empty">No courses yet. Pick one from the list above.</li>`; return; }
+  const picks = termPicks();
+  document.getElementById("selcount").textContent = picks.length || "";
+  if (!picks.length) { list.innerHTML = `<li class="empty">No courses in ${esc(state.term)} yet. Pick one from the list above.</li>`; return; }
 
   const pill = p => {
     const c = COURSES.get(p.code), sec = SECTION_BY_ID.get(p.id);
@@ -449,11 +539,12 @@ function renderSelected(result) {
       <span class="stripe"></span>
       <span>
         <span class="code">${c.label}-${sec.sec}</span> <span class="t">${esc(c.name)}</span>
-        <div class="sub">${profLinks(sec)} · ${fmtMeets(sec)}</div>
-        ${sec.note ? `<div class="sub">${esc(sec.note)}</div>` : ""}
+        <div class="sub">${profLinks(sec)} · ${esc(fmtMeets(sec))}${unitsLabel(sec) ? " · " + esc(unitsLabel(sec)) : ""}</div>
+        ${sec.note && sec.meets.length ? `<div class="sub">${esc(sec.note)}</div>` : ""}
         <div class="sub">${alts ? `${alts} other section${alts > 1 ? "s" : ""}` : "Only section"}${sec.meets.length ? "" : " · not shown on the calendar"}</div>
         ${conflictCodes.has(p.code) ? `<div class="warn">Time conflict</div>` : ""}
         ${warnCodes.has(p.code) ? `<div class="soft">Clashes with your schedule</div>` : ""}
+        ${alsoInNote(c)}${lastEval?.duplicates.has(`p:${p.code}`) ? `<span class="badge">counted once</span>` : ""}
       </span>
       <span class="acts">
         <button class="x" type="button" data-remove="${p.code}" aria-label="Remove ${c.label} ${esc(c.name)}" title="Remove">×</button>
@@ -466,11 +557,11 @@ function renderSelected(result) {
 
   // In highlight mode the highlighted course is listed first, above both groups, so its × is easy to reach.
   // Display order only: state.selected (and the saved order) is unchanged.
-  const top = state.selected.filter(p => p.code === state.focus);
-  const rest = state.selected.filter(p => p.code !== state.focus);
+  const top = picks.filter(p => p.code === state.focus);
+  const rest = picks.filter(p => p.code !== state.focus);
   const planned = rest.filter(p => !isContemplated(p)), maybe = rest.filter(isContemplated);
-  const nPlanned = state.selected.filter(p => !isContemplated(p)).length;
-  const nMaybe = state.selected.length - nPlanned;
+  const nPlanned = picks.filter(p => !isContemplated(p)).length;
+  const nMaybe = picks.length - nPlanned;
   list.innerHTML = top.map(pill).join("")
     + `<li class="grp"><span>On schedule</span><span>${nPlanned}</span></li>`
     + (planned.length ? planned.map(pill).join("") : (top.length && !isContemplated(top[0]) ? "" : `<li class="empty">Nothing on the schedule yet.</li>`))
@@ -480,11 +571,14 @@ function renderSelected(result) {
 
 function renderStats(result) {
   const inConflict = new Set(result.conflicts.map(it => it.p.code)).size;
-  const nPlanned = state.selected.filter(p => !isContemplated(p)).length;
-  const nMaybe = state.selected.length - nPlanned;
+  const picks = termPicks();
+  const planned = picks.filter(p => !isContemplated(p));
+  const nPlanned = planned.length, nMaybe = picks.length - nPlanned;
+  const units = list => list.reduce((s, p) => s + sectionUnits(SECTION_BY_ID.get(p.id)), 0);
   document.getElementById("stats").innerHTML =
     `<span class="chip">${nPlanned} on schedule</span>` +
     (nMaybe ? `<span class="chip">${nMaybe} contemplated</span>` : "") +
+    `<span class="chip" id="units-stat" data-scheduled="${units(planned)}" data-with-contemplated="${units(picks)}">${fmtU(units(planned))} units scheduled${nMaybe ? ` · ${fmtU(units(picks))} with contemplated` : ""}</span>` +
     (inConflict ? `<span class="chip bad">${inConflict} courses in conflict</span>` : nPlanned ? `<span class="chip">No conflicts</span>` : "");
   document.getElementById("showmaybe").checked = state.showContemplated;
 }
@@ -518,8 +612,13 @@ function render() {
   renderSelected(result);
   renderStats(result);
   renderFocusBar();
+  renderTerms();
   renderTabs();
   if (state.view === "requirements") renderRequirements(lastEval);
+}
+
+function renderTerms() {
+  document.querySelectorAll("#terms button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.term === state.term)));
 }
 
 function renderTabs() {
@@ -552,14 +651,16 @@ function progressBar(by, target, label) {
   </div>`;
 }
 
-/** A course as a chip styled by source. Winter courses are buttons that open the course pop-up. */
+/** A course as a chip styled by source, naming its quarter. Picks from the course data are buttons that open the
+ *  course pop-up. */
 function courseChip(c, { override = false, via = null } = {}) {
-  const where = c.source === "other" ? [c.quarter, STATUS_LABEL[c.status]].filter(Boolean).join(", ") : SOURCE_LABEL[c.source];
+  const where = c.source === "other" ? [c.quarter, STATUS_LABEL[c.status]].filter(Boolean).join(", ") : `${c.term}, ${SOURCE_LABEL[c.source]}`;
+  const quarter = c.source === "other" ? c.quarter : c.term;
   const units = c.units !== REQ.defaultUnits ? ` · ${fmtU(c.units)} u` : "";
-  const inner = `<b>${esc(c.num)}</b>${c.title ? ` ${esc(c.title)}` : ""}${units}`;
+  const inner = `<b>${esc(c.num)}</b>${c.title ? ` ${esc(c.title)}` : ""}${units}${quarter ? `<span class="q">${esc(quarter)}</span>` : ""}`;
   const title = esc(`${c.num}${c.title ? " " + c.title : ""} (${where})`);
-  const chip = c.winterCode
-    ? `<button type="button" class="rc src-${c.source}" data-course="${esc(c.winterCode)}" title="${title}">${inner}</button>`
+  const chip = c.pickCode
+    ? `<button type="button" class="rc src-${c.source}" data-course="${esc(c.pickCode)}" title="${title}">${inner}</button>`
     : `<span class="rc src-${c.source}" title="${title}">${inner}</span>`;
   return chip + (via ? `<span class="muted">as ${esc(via)} </span>` : "") + (override ? `<span class="badge">override</span>` : "");
 }
@@ -591,7 +692,7 @@ function renderRequirements(ev) {
   const d = REQ.degree;
   const found = ev.rows.filter(r => r.section === "foundations"), flmbe = ev.rows.filter(r => r.section === "flmbe");
   const coreUnits = d.foundations.units + d.flmbe.units;
-  const boothUnits = boothUnitsSoFar();
+  const boothUnits = boothUnitsSoFar(ev);
   document.getElementById("req-degree").innerHTML = `
     <h2>Degree requirements <span>${esc(ev.program.label)}</span></h2>
     <h3 class="req-sub">Foundations ${statusChip(ev.foundations.filled >= ev.foundations.choose, ev.foundations.filled, `${ev.foundations.choose} lines`)}</h3>
@@ -608,7 +709,8 @@ function renderRequirements(ev) {
     <h3 class="req-sub" id="req-total">Total units ${statusChip(ev.total.units >= ev.total.target, fmtU(ev.total.units), fmtU(ev.total.target))}</h3>
     ${progressBar(ev.total.bySource, ev.total.target, "Total units")}
     ${ev.program.minBooth ? `<p class="req-note">At least ${fmtU(ev.program.minBooth)} units must be Booth courses. Booth units so far: ${fmtU(boothUnits)}.</p>` : ""}
-    ${ev.program.note ? `<p class="req-note">${esc(ev.program.note)}</p>` : ""}`;
+    ${ev.program.note ? `<p class="req-note">${esc(ev.program.note)}</p>` : ""}
+    ${duplicatesNote(ev)}`;
 
   document.getElementById("req-picker").innerHTML = REQ.concentrations.map(c =>
     `<label><input type="checkbox" data-track="${esc(c.id)}"${req.tracked.includes(c.id) ? " checked" : ""}>${esc(c.label)}</label>`).join("");
@@ -620,7 +722,9 @@ function renderRequirements(ev) {
   document.getElementById("oq-count").textContent = req.other.length || "";
   document.getElementById("oq-list").innerHTML = req.other.length ? req.other.map(o => {
     const course = { num: o.num, title: o.title, units: o.units, source: "other", quarter: o.quarter, status: o.status };
-    return `<li data-oq="${esc(o.id)}"><span class="grow">${courseChip(course)}${o.quarter ? `<span class="muted">${esc(o.quarter)}</span>` : ""}</span>
+    const kept = ev.duplicates.get(`o:${o.id}`);
+    const dup = kept ? `<span class="badge" title="${esc(duplicateText(kept))}">counted once</span>` : "";
+    return `<li data-oq="${esc(o.id)}"><span class="grow">${courseChip(course)}${dup}</span>
       <label><span class="sr">Status</span><select data-oq-status>${W27Req.STATUSES.map(s => `<option value="${s}"${s === o.status ? " selected" : ""}>${STATUS_LABEL[s]}</option>`).join("")}</select></label>
       <label><span class="sr">Units</span><input type="number" min="0" max="1000" step="50" value="${o.units}" data-oq-units></label>
       <button type="button" class="x" data-oq-remove aria-label="Remove ${esc(o.num)}" title="Remove">×</button></li>`;
@@ -634,10 +738,29 @@ function renderRequirements(ev) {
   document.querySelectorAll("[data-noncredit]").forEach(b => { b.checked = !!req[b.dataset.noncredit]; });
 }
 
-/** Units from Booth-numbered or cross-listed courses, all sources (for the program's minimum Booth units). */
-function boothUnitsSoFar() {
+/** Units from Booth-numbered or cross-listed courses, all sources, duplicates counted once (for the program's
+ *  minimum Booth units). */
+function boothUnitsSoFar(ev) {
   const xl = new Set(REQ.crosslists.map(x => x.course));
-  return reqCourses().filter(c => /^\d{5}$/.test(c.num) || xl.has(c.num)).reduce((s, c) => s + c.units, 0);
+  return reqCourses().filter(c => !ev.duplicates.has(c.uid) && (/^\d{5}$/.test(c.num) || xl.has(c.num))).reduce((s, c) => s + c.units, 0);
+}
+
+/** "Counted as 35100 in Autumn 2026, scheduled": names the copy that counts instead of a duplicate. */
+function duplicateText(kept) {
+  const where = kept.source === "other" ? [kept.quarter || "Other quarters", STATUS_LABEL[kept.status]].filter(Boolean).join(", ") : `${kept.term}, ${SOURCE_LABEL[kept.source]}`;
+  return `Counted as ${kept.num} in ${where}`;
+}
+
+/** Lists courses that appear more than once (each counts once). Empty when there are none. */
+function duplicatesNote(ev) {
+  if (!ev.duplicates.size) return "";
+  const byUid = new Map(reqCourses().map(c => [c.uid, c]));
+  const items = [...ev.duplicates].map(([uid, kept]) => {
+    const c = byUid.get(uid);
+    const where = c.source === "other" ? c.quarter || "Other quarters" : `${c.term}, ${SOURCE_LABEL[c.source]}`;
+    return `<li><span class="grow"><span class="badge">counted once</span><b>${esc(c.num)}</b> (${esc(where)}) is listed more than once. ${esc(duplicateText(kept))}.</span></li>`;
+  });
+  return `<h3 class="req-sub" id="req-dups">Listed more than once</h3><ul class="req-list">${items.join("")}</ul>`;
 }
 
 function overrideItem(o, i) {
@@ -730,7 +853,7 @@ function openCourse(code, push = true) {
     return `<tr class="${s.id === mine ? "mine" : ""}">
       <td><b>${esc(s.sec)}</b>${s.id === mine ? `<div class="you">In schedule</div>` : ""}</td>
       <td>${profLinks(s)}</td>
-      <td>${fmtMeets(s)}${s.note ? `<div class="muted">${esc(s.note)}</div>` : ""}</td>
+      <td>${esc(fmtMeets(s))}${s.note && s.meets.length ? `<div class="muted">${esc(s.note)}</div>` : ""}${unitsLabel(s) ? `<div class="muted">${esc(unitsLabel(s))}</div>` : ""}</td>
       <td>${where || `<span class="muted">${s.prog.map(esc).join(", ")}</span>`}</td>
     </tr>`;
   }).join("");
@@ -753,9 +876,9 @@ function openCourse(code, push = true) {
   const maybeNow = isContemplated(state.selected.find(p => p.code === code) || {});
 
   showDialog(dlgHeader(
-    `${esc(c.label)} · ${SCHOOLS[c.dept]}${first.units ? " · " + esc(first.units) : ""}`,
+    `${esc(c.label)} · ${esc(c.term)} · ${SCHOOLS[c.dept]}${first.units ? " · " + esc(first.units) : ""}${courseUnitsText(c)}`,
     c.name,
-    tags.length ? `<div class="tags">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join("")}</div>` : ""
+    (tags.length ? `<div class="tags">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join("")}</div>` : "") + alsoInNote(c)
   ) + `<div class="dlg-body">
     <section><h3>Description</h3>${descHtml}</section>
     ${notes.length ? `<section><h3>Notes</h3><ul>${notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul></section>` : ""}
@@ -786,16 +909,18 @@ function targetOptions(selected = "") {
 /** The pop-up's "Counts toward" section: where the course counts now, where it could count, its overrides, and a
  *  form to add an override for its number. */
 function countsTowardHtml(c) {
-  const num = winterNum(c);
+  const num = c.num;
   const selected = state.selected.some(p => p.code === c.code);
-  const used = selected && lastEval ? lastEval.usage.get(`w:${c.code}`) || [] : [];
+  const used = selected && lastEval ? lastEval.usage.get(`p:${c.code}`) || [] : [];
+  const keptInstead = selected && lastEval ? lastEval.duplicates.get(`p:${c.code}`) : null;
   const eligible = REQ.eligibleTargets(num, req.overrides);
   const mine = req.overrides.map((o, i) => [o, i]).filter(([o]) => o.num === num);
   const chip = t => `<span class="rq${t.override ? " ovr" : ""}">${t.override ? "override · " : ""}${esc(t.label)}${t.via ? ` (as ${esc(t.via)})` : ""}</span>`;
-  const credit = winterUnits(c) > 0;
+  const credit = sectionUnits(c.sections[0]) > 0;
   return `<section class="counts"><h3>Counts toward</h3>
     ${credit ? "" : `<p class="muted">Law School course: it earns no Booth units unless the requirements cross-list it or an override adds it.</p>`}
-    ${selected ? `<p>${used.length ? "With your courses, it counts now toward:" : "With your courses, it counts toward no listed requirement now; its units go to electives."}</p>
+    ${keptInstead ? `<p><span class="badge">counted once</span>This course is listed more than once. ${esc(duplicateText(keptInstead))}.</p>` : ""}
+    ${selected && !keptInstead ? `<p>${used.length ? "With your courses, it counts now toward:" : "With your courses, it counts toward no listed requirement now; its units go to electives."}</p>
       ${used.length ? `<div class="reqchips">${used.map(chip).join("")}</div>` : ""}` : ""}
     <p>${eligible.length ? "It can count toward:" : "It is not on any requirement list."}</p>
     ${eligible.length ? `<div class="reqchips">${eligible.map(chip).join("")}</div>` : ""}
@@ -808,7 +933,7 @@ function countsTowardHtml(c) {
   </section>`;
 }
 
-/** Opens the professor pop-up: title, bio, faculty-page link and this quarter's courses. */
+/** Opens the professor pop-up: title, bio, faculty-page link and their 2026-27 courses by quarter. */
 function openProf(id, push = true) {
   const p = DETAILS.profs[id];
   if (!p) return;
@@ -820,8 +945,8 @@ function openProf(id, push = true) {
     `<div class="dlg-body">
       <section>${bio}</section>
       ${p.url ? `<div class="dlg-actions"><a class="btn" href="${esc(p.url)}" target="_blank" rel="noopener">Law School faculty page ↗</a></div>` : ""}
-      <section><h3>Teaching in Winter 2027</h3><ul class="teach">${teaching.map(c =>
-        `<li><button type="button" data-course="${c.code}"><span class="code">${esc(c.label)}</span><span class="t">${esc(c.name)}</span></button></li>`).join("")}</ul></section>
+      ${TERMS.filter(term => teaching.some(c => c.term === term)).map(term => `<section><h3>Teaching in ${esc(term)}</h3><ul class="teach">${teaching.filter(c => c.term === term).map(c =>
+        `<li><button type="button" data-course="${c.code}"><span class="code">${esc(c.label)}</span><span class="t">${esc(c.name)}</span></button></li>`).join("")}</ul></section>`).join("")}
     </div>`);
 }
 
@@ -844,7 +969,7 @@ DLG.addEventListener("click", e => {
   if (act.dataset.dlg === "status") { setStatus(code, act.dataset.to); openCourse(code, false); }
   if (act.dataset.dlg === "remove") { removeCourse(code); openCourse(code, false); }
   if (act.dataset.dlg === "ovr-add") {
-    addOverride(winterNum(COURSES.get(code)), DLG.querySelector("#dlg-ov-kind").value, DLG.querySelector("#dlg-ov-target").value);
+    addOverride(COURSES.get(code).num, DLG.querySelector("#dlg-ov-kind").value, DLG.querySelector("#dlg-ov-target").value);
     openCourse(code, false);
   }
 });
@@ -976,10 +1101,10 @@ function showMsg(id, text, isError = false) {
   el.classList.toggle("err", isError);
 }
 
-/** Fills the Other quarters title from the Winter data while the typed number matches a Winter course. */
+/** Fills the Other quarters title from the course data while the typed number matches a course. */
 document.getElementById("oq-num").addEventListener("input", e => {
   const title = document.getElementById("oq-title");
-  const match = WINTER_BY_NUM.get(W27Req.normalizeNumber(e.target.value));
+  const match = COURSE_BY_NUM.get(W27Req.normalizeNumber(e.target.value));
   if (match && (!title.value || title.dataset.auto === "1")) { title.value = match.name; title.dataset.auto = "1"; }
   else if (!match && title.dataset.auto === "1") { title.value = ""; title.dataset.auto = ""; }
 });
@@ -1052,13 +1177,13 @@ document.getElementById("reqview").addEventListener("click", e => {
     const r = parseBackup(text);
     if (!r.ok) { showMsg("imp-msg", `Nothing was restored. ${r.error}`, true); return; }
     state.selected = [];
-    for (const p of r.selected) state.selected.push({ ...p, hue: p.hue ?? nextHue() });
+    for (const p of r.selected) state.selected.push({ ...p, hue: p.hue ?? nextHue(COURSES.get(p.code).term) });
     state.showContemplated = r.showContemplated;
     state.focus = null;
     req = r.requirements;
     save();
     commitReq();
-    showMsg("imp-msg", `Restored ${r.selected.length} Winter course${r.selected.length === 1 ? "" : "s"}, ${req.other.length} other-quarter course${req.other.length === 1 ? "" : "s"} and ${req.overrides.length} override${req.overrides.length === 1 ? "" : "s"}.${r.skipped ? ` Skipped ${r.skipped} section${r.skipped === 1 ? "" : "s"} not in the Winter data.` : ""}`);
+    showMsg("imp-msg", `Restored ${r.selected.length} selected course${r.selected.length === 1 ? "" : "s"}, ${req.other.length} other-quarter course${req.other.length === 1 ? "" : "s"} and ${req.overrides.length} override${req.overrides.length === 1 ? "" : "s"}.${r.skipped ? ` Skipped ${r.skipped} section${r.skipped === 1 ? "" : "s"} not in the course data.` : ""}`);
   }
 });
 
@@ -1125,7 +1250,35 @@ document.addEventListener("keydown", e => {
   }
 });
 
+// ---------- quarter switcher and theme ----------
+
+document.getElementById("terms").innerHTML = TERMS.map(t =>
+  `<button type="button" data-term="${esc(t)}" aria-pressed="false">${esc(t)}</button>`).join("");
+document.getElementById("terms").addEventListener("click", e => {
+  const b = e.target.closest("button[data-term]");
+  if (b) setTerm(b.dataset.term);
+});
+
+const THEME_KEY = "w27-theme";
+
+/** Updates the toggle's icon and label for the theme on <html> (index.html sets it before first paint). */
+function renderThemeToggle() {
+  const dark = document.documentElement.dataset.theme === "dark";
+  const btn = document.getElementById("theme-toggle");
+  btn.setAttribute("aria-label", dark ? "Switch to light theme" : "Switch to dark theme");
+  btn.title = btn.getAttribute("aria-label");
+  btn.dataset.icon = dark ? "sun" : "moon";
+}
+
+document.getElementById("theme-toggle").addEventListener("click", () => {
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* storage unavailable: the choice lasts this visit */ }
+  renderThemeToggle();
+});
+
 load();
 loadReq();
 setupRequirementControls();
+renderThemeToggle();
 render();

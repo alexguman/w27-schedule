@@ -52,9 +52,9 @@ def test_requirements_panel_separates_sources(page):
     pg.reload()
     # Winter: Financial Accounting on the schedule, Marketing Strategy contemplated.
     pg.fill("#search", "30000")
-    pg.locator('.res[data-code="BUSN30000"]').click()
+    pg.locator('.res[data-code="Wi27-BUSN30000"]').click()
     pg.fill("#search", "37000")
-    pg.locator('#results [data-info="BUSN37000"]').click()
+    pg.locator('#results [data-info="Wi27-BUSN37000"]').click()
     pg.locator("[data-dlg=add][data-to=contemplated]").click()
     pg.keyboard.press("Escape")
     # Other quarters: 35100, completed in Autumn. Its title comes from the Winter data.
@@ -74,4 +74,113 @@ def test_requirements_panel_separates_sources(page):
     saved = pg.evaluate("JSON.parse(localStorage.getItem('w27-requirements')).other.map(o => o.num)")
     assert saved == ["35100"]
     assert pg.evaluate("JSON.parse(localStorage.getItem('booth-w27-schedule')).length") == 2
+    assert errors == []
+
+
+def _fresh(pg):
+    """Clears this page's saved state (schedule, quarter, requirements, theme) and reloads it."""
+    pg.evaluate("localStorage.clear()")
+    pg.reload()
+
+
+def _add(pg, code, status="planned"):
+    """Adds course `code` (a key such as "Au26-BUSN30000") from the search list of the quarter on screen."""
+    pg.fill("#search", code.split("-BUSN")[1])
+    if status == "planned":
+        pg.locator(f'.res[data-code="{code}"]').click()
+    else:
+        pg.locator(f'#results [data-info="{code}"]').click()
+        pg.locator("[data-dlg=add][data-to=contemplated]").click()
+        pg.keyboard.press("Escape")
+
+
+def test_quarters_count_together_in_requirements(page):
+    pg, errors = page
+    _fresh(pg)
+    assert pg.get_attribute('#terms [data-term="Winter 2027"]', "aria-pressed") == "true"
+    assert [b.text_content() for b in pg.locator("#terms button").all()] == [
+        "Autumn 2026",
+        "Winter 2027",
+        "Spring 2027",
+    ]
+
+    pg.click('#terms [data-term="Autumn 2026"]')
+    _add(pg, "Au26-BUSN30000")
+    assert pg.locator("#selected .pill").count() == 1
+    pg.click('#terms [data-term="Spring 2027"]')
+    # Autumn's pick is not shown in Spring; the search list holds only Spring courses.
+    assert pg.locator("#selected .pill").count() == 0
+    pg.fill("#search", "33918")
+    assert "Time TBD" in pg.text_content('.res[data-code="Sp27-BUSN33918"]')
+    _add(pg, "Sp27-BUSN37000")
+    assert pg.locator(".blk").count() >= 1
+    assert pg.get_attribute("#units-stat", "data-scheduled") == "100"
+    # Law courses are Winter-only.
+    pg.click("#school-laws")
+    assert "Winter 2027 only" in pg.text_content("#results")
+    pg.click("#school-all")
+
+    pg.click("#tab-requirements")
+    assert "Autumn 2026" in pg.text_content('[data-row="fa"] .rc.src-scheduled')
+    assert "Spring 2027" in pg.text_content('[data-row="marketing"] .rc.src-scheduled')
+    assert pg.get_attribute("#req-total + .rprog", "data-scheduled") == "200"
+
+    # The same course in a second quarter counts once and is flagged in both places.
+    pg.click("#tab-calendar")
+    _add(pg, "Sp27-BUSN30000", "contemplated")
+    assert "Also in Autumn 2026" in pg.text_content('#selected .pill[data-code="Sp27-BUSN30000"]')
+    pg.click("#tab-requirements")
+    assert pg.locator("#req-dups").count() == 1
+    total = pg.locator("#req-total + .rprog")
+    assert [total.get_attribute(f"data-{s}") for s in ("scheduled", "contemplated")] == ["200", "0"]
+
+    # The quarter on screen is remembered.
+    pg.reload()
+    assert pg.get_attribute('#terms [data-term="Spring 2027"]', "aria-pressed") == "true"
+    # A first-half and a second-half course never clash.
+    assert pg.evaluate("halvesOverlap({half: 'first'}, {half: 'second'})") is False
+    assert pg.evaluate("halvesOverlap({half: 'first'}, {half: null})") is True
+    assert errors == []
+
+
+def test_schedule_saved_before_quarters_still_loads(page):
+    pg, errors = page
+    _fresh(pg)
+    # Saves from earlier versions: a bare number key, a dept-plus-number key, no status on the first.
+    pg.evaluate(
+        """(() => {
+          const id = code => SECTIONS.find(s => s.term === "Winter 2027" && s.code === code).id;
+          localStorage.setItem("booth-w27-schedule", JSON.stringify([
+            {code: "30000", id: id("30000"), hue: 212},
+            {code: "BUSN35100", id: id("35100"), hue: 152, status: "contemplated"},
+          ]));
+          localStorage.setItem("w27-term", "Spring 2027");
+        })()"""
+    )
+    pg.reload()
+    assert pg.locator("#selected .pill").count() == 0
+    pg.click('#terms [data-term="Winter 2027"]')
+    codes = [li.get_attribute("data-code") for li in pg.locator("#selected .pill").all()]
+    assert sorted(codes) == ["Wi27-BUSN30000", "Wi27-BUSN35100"]
+    assert pg.locator("#selected .pill.maybe").count() == 1
+    assert errors == []
+
+
+def test_theme_defaults_to_light_and_toggle_persists(page):
+    pg, errors = page
+    # A new page in a browser that prefers dark: the site still starts light.
+    dark_os = pg.context.browser.new_page(color_scheme="dark")
+    dark_os.goto(pg.url)
+    dark_os.evaluate("localStorage.removeItem('w27-theme')")
+    dark_os.reload()
+    assert dark_os.evaluate("document.documentElement.dataset.theme") == "light"
+    assert dark_os.get_attribute("#theme-toggle", "aria-label") == "Switch to dark theme"
+    dark_os.click("#theme-toggle")
+    dark_os.reload()
+    assert dark_os.evaluate("document.documentElement.dataset.theme") == "dark"
+    assert dark_os.get_attribute("#theme-toggle", "aria-label") == "Switch to light theme"
+    background = dark_os.evaluate("getComputedStyle(document.body).backgroundColor")
+    assert background == "rgb(22, 19, 20)"  # --bg in the dark theme
+    dark_os.evaluate("localStorage.removeItem('w27-theme')")
+    dark_os.close()
     assert errors == []

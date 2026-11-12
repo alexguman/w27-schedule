@@ -5,7 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- Course data comes partly from login-only university systems; keep the page out of search engines. -->
 <meta name="robots" content="noindex, nofollow">
-<title>Winter 2027 Schedule Builder</title>
+<title>Booth Course Schedule Builder</title>
+<script>
+  // Applies the saved theme ("w27-theme") before first paint so the page never flashes the wrong one.
+  // Light is the default whatever the OS setting; app.js owns the toggle button.
+  (function () {
+    var theme = "light";
+    try { if (localStorage.getItem("w27-theme") === "dark") theme = "dark"; } catch (e) { /* storage blocked */ }
+    document.documentElement.dataset.theme = theme;
+  })();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Serif:wght@500&display=swap" rel="stylesheet">
@@ -13,9 +22,14 @@
 
 </head>
 <body>
+<button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch to dark theme" data-icon="moon">
+  <svg class="ic-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+  <svg class="ic-sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+</button>
 <div class="app">
   <header class="top">
-    <h1><span>Winter 2027</span> Schedule Builder</h1>
+    <h1><span>Booth</span> Course Schedule Builder</h1>
+    <div class="seg terms" id="terms" role="group" aria-label="Quarter"></div>
     <div class="stats" id="stats"></div>
     <span class="hint">Press Details on any course, or click an instructor, for descriptions and bios.</span>
   </header>
@@ -64,10 +78,10 @@
       </div>
       <div class="req-legend" aria-label="Sources">
         <span><i class="sw src-other"></i>Completed and other quarters</span>
-        <span><i class="sw src-scheduled"></i>Winter, on schedule</span>
-        <span><i class="sw src-contemplated"></i>Winter, contemplated (what-if)</span>
+        <span><i class="sw src-scheduled"></i>On a quarter's schedule</span>
+        <span><i class="sw src-contemplated"></i>Contemplated (what-if)</span>
       </div>
-      <p class="muted req-private">Everything here is saved only in this browser. Use Backup to move it to another browser.</p>
+      <p class="muted req-private">Counts courses from every quarter: your picks in Autumn, Winter and Spring, plus Other quarters below. A course listed more than once counts once. Everything is saved only in this browser; use Backup to move it.</p>
     </div>
 
     <section class="panel" id="req-degree" aria-label="Degree requirements"></section>
@@ -80,10 +94,11 @@
 
     <section class="panel">
       <h2>Other quarters <span id="oq-count"></span></h2>
+      <p class="muted">For courses outside this site's 2026-27 data, such as Summer 2026 or earlier quarters.</p>
       <div class="req-form" id="oq-form">
         <label>Course number <input id="oq-num" autocomplete="off" placeholder="35100 or ECON 30100"></label>
-        <label class="grow">Title <input id="oq-title" autocomplete="off" placeholder="Filled in when the number matches a Winter course"></label>
-        <label>Quarter <input id="oq-quarter" autocomplete="off" placeholder="Autumn 2026"></label>
+        <label class="grow">Title <input id="oq-title" autocomplete="off" placeholder="Filled in when the number matches a listed course"></label>
+        <label>Quarter <input id="oq-quarter" autocomplete="off" placeholder="Summer 2026"></label>
         <label>Status <select id="oq-status"><option value="completed">Completed</option><option value="enrolled">Enrolled</option><option value="planned">Planned</option></select></label>
         <label>Units <input id="oq-units" type="number" min="0" max="1000" step="50" value="100"></label>
         <button type="button" class="btn primary" id="oq-add">Add course</button>

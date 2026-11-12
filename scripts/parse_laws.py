@@ -10,6 +10,8 @@ import json
 import re
 import sys
 
+# The input rows come from the Winter 2027 Law School class search.
+TERM = "Winter 2027"
 DAYS = {"Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4, "Sat": 5, "Sun": 6}
 TYPES = {"CRS": "Course", "SEM": "Seminar", "CLN": "Clinic"}
 
@@ -37,6 +39,10 @@ def parse_meets(parts: list[str]) -> list[dict]:
 
 
 def parse_row(row: str) -> dict:
+    """Converts one class-search row into a section record (same shape as parse_booth.py's).
+
+    Law sections are 100 units, carry no Booth requirement tags, and are all in TERM.
+    """
     nbr, code, sec, kind, _status, enrollment, middle, name = row.split("|", 7)
     parts = [p.strip() for p in middle.split("~")]
     parts = [p for p in parts if not p.startswith("Total Enrollment")]
@@ -45,6 +51,7 @@ def parse_row(row: str) -> dict:
     return {
         "id": "L" + nbr,
         "dept": "LAWS",
+        "term": TERM,
         "code": code,
         "sec": sec.zfill(2),
         "name": re.sub(r"\s+", " ", name).strip(),
@@ -52,8 +59,11 @@ def parse_row(row: str) -> dict:
         "meets": parse_meets(parts[1:]),
         "note": "",
         "cap": cap or None,
+        "units": 100,
+        "half": None,
         "prog": [TYPES.get(kind, kind)],
         "remote": False,
+        "tags": {"areas": [], "rules": []},
     }
 
 

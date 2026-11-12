@@ -1,10 +1,10 @@
 # AGENTS.md
 
-Static schedule builder with Booth degree-requirement tracking (vanilla HTML/CSS/JS, no runtime dependencies). Python is used only for the build and the data parsers; Node (built-in test runner, no npm) only for the JS unit tests. See README.md for features and data sources.
+Booth Course Schedule Builder: static per-quarter schedule builder for 2026-27 with Booth degree-requirement tracking (vanilla HTML/CSS/JS, no runtime dependencies). Python is used only for the build and the data parsers; Node (built-in test runner, no npm) only for the JS unit tests. See README.md for features and data sources.
 
 ## Setup and checks
 - `pip install -r requirements-dev.txt` (and `python -m playwright install chromium` for the browser test)
-- Build: `python scripts/build.py` writes `site/` and `dist/schedule-builder.html`
+- Build: `python scripts/build.py` writes `site/` and `dist/schedule-builder.html`. Data refresh steps: README.md, "Refresh the data".
 - Test: `python -m pytest` (runs `tests/requirements.test.js` through Node; skips it without Node). Lint: `ruff check . && ruff format --check .`
 
 ## Directory map
@@ -24,9 +24,10 @@ For option 3, the CSS is global: `*`, `html`, `body`, `button`, `:root` tokens a
 ## Conventions that differ from defaults
 - `app.js` reads `window.W27_SECTIONS`, `window.W27_DETAILS` and `window.W27_REQUIREMENTS` (set by `data.js`) and `window.W27Req` (set by `requirements.js`). Regenerate `data.js` with the build, never by hand.
 - `requirements.js` loads as a plain script in the browser and with `require()` in Node. Terms (course number, source, target, override) are defined at its top.
-- Section ids: Booth uses the bidding site's section id (`"48431"`). Law uses `"L"` plus the class number (`"L20232"`). Course keys are dept plus number (`"BUSN30000"`). Greenberg Seminars, which share LAWS 92000, get `".1"`, `".2"` suffixes.
+- Section ids are unique across the year. Booth uses the bidding site's section id (`"48431"`). Law uses `"L"` plus the class number (`"L20232"`). Course numbers repeat across quarters, so course keys are quarter prefix plus dept and number (`"Wi27-BUSN30000"`). Greenberg Seminars, which share LAWS 92000, get `".1"`, `".2"` suffixes. Saves store section ids, so key formats can change without migration.
+- Requirement counting uses only `data/booth_requirements.json`; the sections' `tags` field is reference data.
 - Times are minutes after midnight. Day 0 is Monday.
-- localStorage keys `booth-w27-schedule`, `w27-show-contemplated` and `w27-requirements` hold each viewer's state. Keep them and their formats stable, or saved work is lost. The Backup format (`"format": "w27-schedule-backup"`, version 1) is also a public contract.
+- localStorage keys `booth-w27-schedule`, `w27-show-contemplated`, `w27-requirements`, `w27-term` (last quarter viewed) and `w27-theme` hold each viewer's state. Keep them and their formats stable, or saved work is lost. The Backup format (`"format": "w27-schedule-backup"`, version 1) is also a public contract.
 - All fetched text is plain text and is escaped with `esc()` before rendering. Do not insert data as HTML.
 - The page has `<meta name="robots" content="noindex, nofollow">` because some data comes from login-only systems. Keep it unless the owner says otherwise.
-- Theme: light and dark come from `prefers-color-scheme` or a `data-theme` attribute on `<html>`.
+- Theme: light by default, ignoring `prefers-color-scheme`. An inline script in `src/index.html` sets `data-theme` on `<html>` from `w27-theme` before first paint; `app.js` runs the toggle.

@@ -177,3 +177,22 @@ test("validateState cleans good state and names the first bad field", () => {
   assert.match(engine.validateState({ tracked: ["astrology"] }).error, /tracked\[0\]/);
   assert.match(engine.validateState({ program: "phd" }).error, /program/);
 });
+
+test("a course number counts once: the strongest source, then the earliest quarter, is kept", () => {
+  const list = [
+    { uid: "spring", num: "35100", units: 100, source: "scheduled", order: 2 },
+    { uid: "autumn", num: "35100", units: 100, source: "scheduled", order: 0 },
+    { uid: "maybe", num: "35100", units: 100, source: "contemplated", order: 1 },
+    { uid: "law", num: "LAWS 48230", units: 100, source: "scheduled", order: 1 },
+    { uid: "busn", num: "38120", units: 100, source: "other" },
+  ];
+  const r = engine.evaluate({ program: "mba", courses: list, tracked: ["finance"] });
+  assert.deepEqual([...r.duplicates.keys()].sort(), ["law", "maybe", "spring"]);
+  assert.equal(r.duplicates.get("spring").uid, "autumn");
+  // The cross-listed Law course duplicates 38120; the completed 38120 is kept.
+  assert.equal(r.duplicates.get("law").uid, "busn");
+  assert.equal(r.total.units, 200);
+  assert.deepEqual(r.usage.get("spring"), []);
+  assert.deepEqual(nums(conc(r, "finance").courses), ["35100"]);
+  assert.equal(conc(r, "finance").courses[0].uid, "autumn");
+});
