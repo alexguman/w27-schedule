@@ -2,6 +2,8 @@
 
 Weekly calendars for planning the 2026-27 year (Autumn 2026, Winter 2027, Spring 2027) from UChicago Booth (BUSN) courses, plus Law School (LAWS) courses for Winter 2027, with Booth degree-requirement tracking across quarters. It is a static page with no server and no dependencies.
 
+> This is my personal tool, please don't rely on it when making important and/or life-altering decisions.
+
 ## Features
 
 - Switch quarters in the header (Winter 2027 on a first visit; the last quarter viewed is remembered). Each quarter has its own calendar, search list, selected list and conflicts.
@@ -23,7 +25,7 @@ Rules come from `data/booth_requirements.json` (Booth's MBA Program Outline 2026
 
 - Pick MBA (2,000 units) or JD/MBA (1,600 units). Tick LEAD and Qualified Work Experience.
 - Foundations (3 lines) and FLMBE (any 7 of 8 lines), each filled by one distinct course. Electives and total units against the program target.
-- Track any number of concentrations. Each shows progress per component and the courses counted. Notes from Booth appear next to the requirement they belong to.
+- Track any number of concentrations. Each component states its rule in plain words (for example "Asset pricing: 100 units from the asset-pricing list (includes 35000 Investments)"), what is still missing ("Needs 100 more units from the asset-pricing list"), and the courses counted. **What counts** lists every qualifying course with its title, the 2026-27 quarters it is offered, and a mark on the ones you picked. Notes from Booth appear next to the requirement they belong to.
 - Courses from every quarter count: scheduled and contemplated picks in Autumn, Winter and Spring, plus **Other quarters** entries. Units are split into three sources: completed and other quarters (filled), picks on a quarter's schedule (lightly filled), and contemplated picks as a what-if (hollow and dashed, as on the calendar). Each counted course names its quarter.
 - A course number listed more than once (two quarters, or a pick and an Other quarters entry) counts once, keeping the strongest source and then the earliest quarter; the extra copies are flagged "counted once".
 - **Other quarters:** for courses outside this data (for example Summer 2026), add them by number (`35100`, `ECON 30100`, `LAWS 48230`) with quarter, status and units (default 100; use 50 for half courses).

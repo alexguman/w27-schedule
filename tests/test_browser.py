@@ -184,3 +184,35 @@ def test_theme_defaults_to_light_and_toggle_persists(page):
     dark_os.evaluate("localStorage.removeItem('w27-theme')")
     dark_os.close()
     assert errors == []
+
+
+DISCLAIMER = (
+    "This is my personal tool, please don't rely on it when making important and/or life-altering decisions."
+)
+
+
+def test_finance_components_explain_rules_and_gaps(page):
+    pg, errors = page
+    _fresh(pg)
+    assert pg.locator("#disclaimer").is_visible()
+    assert pg.text_content("#disclaimer").strip() == DISCLAIMER
+    pg.click("#tab-requirements")
+    pg.check('[data-track="finance"]')
+    expected = {
+        "asset_pricing": ("35000 Investments", "asset-pricing list"),
+        "corporate": ("35200 Corporation Finance", "corporate-finance list"),
+    }
+    for comp, (core, list_name) in expected.items():
+        text = pg.locator(f'[data-conc="finance"] [data-comp="{comp}"]').inner_text()
+        assert f"100 units from the {list_name} (includes {core})" in text
+        assert f"Needs 100 more units from the {list_name}" in text
+    # "What counts" lists every qualifying course with its title and stays open across re-renders.
+    what = pg.locator('[data-conc="finance"] [data-comp="asset_pricing"] details.what')
+    what.locator("summary").click()
+    assert what.locator(".what-list li").count() == 12
+    assert "35000 Investments" in what.inner_text()
+    pg.select_option("#req-program", "jdmba")
+    assert pg.locator('[data-conc="finance"] [data-comp="asset_pricing"] details.what[open]').count() == 1
+    pg.click("#tab-calendar")
+    assert pg.locator("#disclaimer").is_visible()
+    assert errors == []

@@ -166,6 +166,22 @@ dialog#dlg::backdrop { background: rgba(20, 12, 14, .45); }
 .teach .code { font: 600 12px var(--font-cond); color: var(--accent); margin-right: 6px; }
 .muted { color: var(--muted); }
 
+/* Quiet, always-visible notice under the header; wraps on narrow screens. */
+.disclaimer { grid-column: 1 / -1; margin: 0; padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--surface); color: var(--muted); font-size: 12px; line-height: 1.4; }
+
+/* ---------- concentration components: rule, gap and "What counts" ---------- */
+.comp .lbl .rule { margin-top: 2px; }
+.gap { margin: 4px 0 2px; }
+.what { margin-top: 6px; font-size: 12px; }
+.what summary { cursor: pointer; color: var(--muted); font-weight: 600; width: fit-content; }
+.what summary:hover { color: var(--accent); }
+.what-list { margin-top: 4px; max-height: 260px; overflow-y: auto; }
+.what-list li { padding: 3px 0; font-size: 12px; gap: 4px 8px; }
+.what-list li.yours { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.what-list .what-grp { font: 600 11px var(--font-body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding-top: 8px; }
+.yours-badge { border-color: var(--accent); color: var(--accent); }
+
 /* ---------- quarter switcher and theme toggle ---------- */
 .terms { flex: 0 1 auto; }
 .terms button { padding: 5px 12px; white-space: nowrap; }

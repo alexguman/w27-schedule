@@ -187,6 +187,22 @@ dialog#dlg::backdrop { background: rgba(20, 12, 14, .45); }
 .teach .code { font: 600 12px var(--font-cond); color: var(--accent); margin-right: 6px; }
 .muted { color: var(--muted); }
 
+/* Quiet, always-visible notice under the header; wraps on narrow screens. */
+.disclaimer { grid-column: 1 / -1; margin: 0; padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--surface); color: var(--muted); font-size: 12px; line-height: 1.4; }
+
+/* ---------- concentration components: rule, gap and "What counts" ---------- */
+.comp .lbl .rule { margin-top: 2px; }
+.gap { margin: 4px 0 2px; }
+.what { margin-top: 6px; font-size: 12px; }
+.what summary { cursor: pointer; color: var(--muted); font-weight: 600; width: fit-content; }
+.what summary:hover { color: var(--accent); }
+.what-list { margin-top: 4px; max-height: 260px; overflow-y: auto; }
+.what-list li { padding: 3px 0; font-size: 12px; gap: 4px 8px; }
+.what-list li.yours { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.what-list .what-grp { font: 600 11px var(--font-body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding-top: 8px; }
+.yours-badge { border-color: var(--accent); color: var(--accent); }
+
 /* ---------- quarter switcher and theme toggle ---------- */
 .terms { flex: 0 1 auto; }
 .terms button { padding: 5px 12px; white-space: nowrap; }
@@ -293,6 +309,7 @@ ul.req-note { padding-left: 18px; }
     <div class="stats" id="stats"></div>
     <span class="hint">Press Details on any course, or click an instructor, for descriptions and bios.</span>
   </header>
+  <p class="disclaimer" id="disclaimer" role="note">This is my personal tool, please don't rely on it when making important and/or life-altering decisions.</p>
 
   <aside class="rail">
     <section class="panel">
@@ -1682,28 +1699,157 @@ function overrideItem(o, i) {
 /** Describes a component's unit rule: "100 units", "at least 200, at most 300 units", "up to 100 units". */
 function needText(k) {
   if (k.rowsTotal) return `all ${k.rowsTotal} lines`;
-  if (k.min !== null && k.max !== null) return `at least ${fmtU(k.min)}, at most ${fmtU(k.max)} units`;
+  if (k.min !== null && k.max !== null) return `at least ${fmtU(k.min)} and at most ${fmtU(k.max)} units`;
   if (k.min !== null) return `at least ${fmtU(k.min)} units`;
-  if (k.max !== null && !k.need) return `up to ${fmtU(k.max)} units, optional`;
+  if (k.max !== null && !k.need) return `up to ${fmtU(k.max)} units (optional)`;
   return `${fmtU(k.need)} units`;
+}
+
+// ---------- concentration components in plain words ----------
+
+/** Quarters of 2026-27 in which each course number is offered, in calendar order. */
+const TERMS_BY_NUM = new Map();
+for (const c of COURSE_LIST) {
+  const list = TERMS_BY_NUM.get(c.num) || [];
+  if (!list.includes(c.term)) list.push(c.term);
+  TERMS_BY_NUM.set(c.num, list);
+}
+
+/** Courses that count as a listed number through a cross-list: "38120" -> ["LAWS 48230"]. */
+const CROSSLISTED_AS = new Map();
+for (const x of REQ.crosslists) CROSSLISTED_AS.set(x.counts_as, [...(CROSSLISTED_AS.get(x.counts_as) || []), x.course]);
+
+/** Basic courses of the Foundations and FLMBE lines (the courses each line is built around). */
+const BASIC_COURSES = new Set([...REQ.degree.foundations.rows, ...REQ.degree.flmbe.rows].flatMap(r => r.basic));
+/** A component names its core course only when its list is this short and holds exactly one basic course, so the
+ *  named course really anchors the list (35000 for asset pricing, 35200 for corporate finance). */
+const MAX_CORE_LIST = 12;
+const LIST_PREVIEW = 3;
+
+/** "35000 Investments", or the number alone when no section in 2026-27 has that number. */
+function courseName(num) {
+  const c = COURSE_BY_NUM.get(num);
+  return c ? `${num} ${c.name}` : num;
+}
+
+/** The component's definition in booth_requirements.json. */
+function componentDef(concId, compId) {
+  return REQ.concentrations.find(c => c.id === concId).components.find(k => k.id === compId);
+}
+
+/** What the component's list is called in sentences: "asset-pricing list", "Applied AI list", or for lists built
+ *  from other concentrations, "Strategic Management and Behavioral Science lists". */
+function listName(def) {
+  if (def.courses_from_concentrations) {
+    return `${def.courses_from_concentrations.map(id => REQ.concentrations.find(c => c.id === id).label).join(" and ")} lists`;
+  }
+  const base = def.label.replace(/\s*\(.*\)$/, "").replace(/:.*$/, "").replace(/\s+courses$/i, "").trim();
+  const words = base.split(/\s+/);
+  // Two-word names read best hyphenated and lowercase ("asset-pricing"); acronyms keep their case ("Applied-AI").
+  const lower = w => (w === w.toUpperCase() ? w : w.toLowerCase());
+  // Sentence-case names read lowercase mid-sentence; names with capitals after the first word are proper names.
+  const sentenceCase = words.slice(1).every(w => w === w.toLowerCase());
+  const name = words.length <= 2 ? words.map(lower).join("-") : sentenceCase ? words.map(lower).join(" ") : base;
+  return `${name} list`;
+}
+
+/** "(includes 35000 Investments)" for a short list anchored by one basic course; otherwise the first numbers and a
+ *  count: "(30000, 30005, 30001 and 13 more)". */
+function listSummary(list) {
+  const core = list.filter(n => BASIC_COURSES.has(n));
+  if (list.length <= MAX_CORE_LIST && core.length === 1) return `includes ${courseName(core[0])}`;
+  const shown = list.slice(0, LIST_PREVIEW);
+  return list.length > shown.length ? `${shown.join(", ")} and ${list.length - shown.length} more` : shown.join(", ");
+}
+
+/** The component's rule in plain words, e.g. "Asset pricing: 100 units from the asset-pricing list (includes
+ *  35000 Investments)". */
+function componentRule(concId, k) {
+  const def = componentDef(concId, k.id);
+  if (def.type === "all_flmbe_rows") return `${k.label}: one course in each of the ${k.rowsTotal} FLMBE lines (${fmtU(k.need)} units)`;
+  const list = [...REQ.targets.get(`conc:${concId}:${k.id}`).list];
+  return `${k.label}: ${needText(k)} from the ${listName(def)} (${listSummary(list)})`;
+}
+
+/** What the component still lacks, e.g. "Needs 100 more units from the asset-pricing list"; "" when complete or
+ *  optional. */
+function componentGap(concId, k) {
+  if (k.done) return "";
+  const def = componentDef(concId, k.id);
+  if (def.type === "all_flmbe_rows") {
+    const full = new Set(k.entries.filter(x => x.course.units >= REQ.defaultUnits).map(x => x.target));
+    const missing = REQ.degree.flmbe.rows.filter(r => !full.has(`flmbe:${r.id}`)).map(r => r.label);
+    return `Needs ${missing.length} more FLMBE line${missing.length === 1 ? "" : "s"}: ${missing.join(", ")}`;
+  }
+  const short = k.need - k.units;
+  return short > 0 ? `Needs ${fmtU(short)} more units from the ${listName(def)}` : "";
+}
+
+/** "What counts" lists the user has opened, by "<concentration>:<component>", so re-renders keep them open. */
+const openWhat = new Set();
+
+/** One qualifying course: number and title, the quarters it is offered in 2026-27, and whether it is yours. */
+function whatItem(num, mine, extra = "") {
+  const terms = TERMS_BY_NUM.get(num) || [];
+  const aliases = (CROSSLISTED_AS.get(num) || []).map(a => `also ${a}${TERMS_BY_NUM.has(a) ? ` (${TERMS_BY_NUM.get(a).join(", ")})` : ""}`);
+  const yours = mine.has(num) || (CROSSLISTED_AS.get(num) || []).some(a => mine.has(a));
+  return `<li class="${yours ? "yours" : ""}"><span class="grow"><b>${esc(num)}</b> ${esc(COURSE_BY_NUM.get(num)?.name || "")}${extra}</span>
+    ${aliases.length ? `<span class="muted">${esc(aliases.join("; "))}</span>` : ""}
+    ${terms.map(t => `<span class="rq">${esc(t)}</span>`).join("")}${yours ? `<span class="badge yours-badge">yours</span>` : ""}</li>`;
+}
+
+/** The "What counts" toggle: every qualifying course (overrides included), grouped by FLMBE line for General
+ *  Management's eight-line component. */
+function whatCounts(concId, k) {
+  const def = componentDef(concId, k.id);
+  const mine = new Set(reqCourses().map(c => c.num));
+  const key = `${concId}:${k.id}`;
+  const itemsFor = target => {
+    const list = [...REQ.targets.get(target).list];
+    const added = req.overrides.filter(o => o.kind === "add" && o.target === target && !list.includes(o.num)).map(o => o.num);
+    const removed = new Set(req.overrides.filter(o => o.kind === "remove" && o.target === target).map(o => o.num));
+    return { count: list.length - [...removed].filter(n => list.includes(n)).length + added.length,
+             html: list.map(n => whatItem(n, mine, removed.has(n) ? ` <span class="badge">excluded by override</span>` : "")).join("")
+               + added.map(n => whatItem(n, mine, ` <span class="badge">override</span>`)).join("") };
+  };
+  let count, body;
+  if (def.type === "all_flmbe_rows") {
+    const groups = REQ.degree.flmbe.rows.map(r => ({ r, ...itemsFor(`flmbe:${r.id}`) }));
+    count = groups.reduce((s, g) => s + g.count, 0);
+    body = groups.map(g => `<li class="what-grp">${esc(g.r.label)}</li>${g.html}`).join("");
+  } else {
+    ({ count, html: body } = itemsFor(`conc:${concId}:${k.id}`));
+  }
+  return `<details class="what" data-what="${esc(key)}"${openWhat.has(key) ? " open" : ""}>
+    <summary>What counts (${count} course${count === 1 ? "" : "s"})</summary>
+    <ul class="req-list what-list">${body}</ul></details>`;
 }
 
 function concCard(e) {
   const status = e.done ? `<span class="chip ok">Complete</span>`
     : e.blockedBy.length ? `<span class="chip wait">Needs ${esc(e.blockedBy.map(id => REQ.concentrations.find(c => c.id === id).label).join(", "))}</span>`
     : `<span class="chip">${fmtU(e.total)} of ${fmtU(e.units)} units</span>`;
-  const comps = e.components.map(k => `<div class="comp" data-comp="${esc(k.id)}">
-      <div class="lbl">${esc(k.label)}<span class="muted">${esc(needText(k))}${k.rowsTotal ? ` · ${k.rowsFilled} of ${k.rowsTotal}` : ""}${k.done && (k.need || k.rowsTotal) ? " · done" : ""}</span></div>
+  const comps = e.components.map(k => {
+    const gap = componentGap(e.id, k);
+    return `<div class="comp" data-comp="${esc(k.id)}">
+      <div class="lbl">${esc(k.label)}<span class="muted rule">${esc(componentRule(e.id, k))}</span>
+        <span class="muted">${k.rowsTotal ? `${k.rowsFilled} of ${k.rowsTotal} lines` : ""}${k.done && (k.need || k.rowsTotal) ? `${k.rowsTotal ? " · " : ""}done` : ""}</span></div>
       <div>${progressBar(k.bySource, k.need || k.max || 0, k.label)}
-        <div>${k.entries.length ? k.entries.map(x => courseChip(x.course, x)).join("") : `<span class="muted">No course counted yet</span>`}</div></div>
-    </div>`).join("");
+        ${gap ? `<p class="soft gap">${esc(gap)}</p>` : ""}
+        <div>${k.entries.length ? k.entries.map(x => courseChip(x.course, x)).join("") : `<span class="muted">No course counted yet</span>`}</div>
+        ${whatCounts(e.id, k)}</div>
+    </div>`;
+  }).join("");
+  // Components can all be met while the concentration's total is not (Healthcare: 100 + 200 of 400 units).
+  const totalGap = !e.done && e.components.every(k => k.done) && e.total < e.units
+    ? `<p class="soft gap">Needs ${fmtU(e.units - e.total)} more units from any of its lists</p>` : "";
   const caps = e.caps.map(cap => `<p class="req-note">Overlap cap with ${esc(REQ.concentrations.find(c => c.id === cap.with).label)}: at most ${fmtU(cap.max)} shared units; sharing ${fmtU(cap.sharedUnits)}${cap.shared.length ? ` (${esc(cap.shared.map(c => c.num).join(", "))})` : ""}.</p>`).join("");
   return `<article class="conc" data-conc="${esc(e.id)}">
     <header><h3>${esc(e.label)}</h3>${status}</header>
     ${progressBar(e.bySource, e.units, e.label)}
     ${e.blockedBy.length ? `<p class="soft">Counts only once ${esc(e.blockedBy.map(id => REQ.concentrations.find(c => c.id === id).label).join(", "))} is complete.</p>` : ""}
     ${e.ruleMessages.map(m => `<p class="soft">${esc(m)}</p>`).join("")}
-    ${comps}${caps}
+    ${totalGap}${comps}${caps}
     ${e.notes.length ? `<ul class="req-note">${e.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
   </article>`;
 }
@@ -2042,6 +2188,14 @@ document.getElementById("ov-add").addEventListener("click", () => {
   addOverride(num, document.getElementById("ov-kind").value, document.getElementById("ov-target").value);
   document.getElementById("ov-num").value = "";
   showMsg("ov-msg", `Override added for ${num}.`);
+});
+
+// Remember which "What counts" lists are open. This runs on the summary's click (Enter and Space click too), not on
+// "toggle", which fires later and is lost if a re-render replaces the element first. d.open is still the old state.
+document.getElementById("req-concs").addEventListener("click", e => {
+  const d = e.target.closest("details[data-what] > summary")?.parentElement;
+  if (!d) return;
+  if (d.open) openWhat.delete(d.dataset.what); else openWhat.add(d.dataset.what);
 });
 
 document.getElementById("reqview").addEventListener("change", e => {
